@@ -65,6 +65,17 @@ data class DocRecord(
     val cscaChainDetail: String = "",
     val cscaStoreSize: Int = 0,
 
+    // ---- 主动认证（AA）----
+    /** 是否实际发起了 AA。 */
+    val activeAuthPerformed: Boolean = false,
+    /** 验签结果；芯片不支持 AA 时为 null。 */
+    val activeAuthVerified: Boolean? = null,
+    val activeAuthAlgorithm: String = "",
+    val activeAuthKeyDetail: String = "",
+    val activeAuthChallenge: String = "",
+    val activeAuthSignatureLength: Int = 0,
+    val activeAuthDetail: String = "",
+
     // ---- 原始数据 ----
     val ocrMrzLines: List<String> = emptyList(),
     val chipMrzLines: List<String> = emptyList(),
@@ -155,6 +166,14 @@ data class DocRecord(
                 cscaCurrentlyExpired = pa?.cscaCurrentlyExpired ?: false,
                 cscaChainDetail = pa?.cscaChainDetail.orEmpty(),
                 cscaStoreSize = pa?.cscaStoreSize ?: 0,
+
+                activeAuthPerformed = result.activeAuth?.performed ?: false,
+                activeAuthVerified = result.activeAuth?.verified,
+                activeAuthAlgorithm = result.activeAuth?.algorithm.orEmpty(),
+                activeAuthKeyDetail = result.activeAuth?.keyDetail.orEmpty(),
+                activeAuthChallenge = result.activeAuth?.challengeHex.orEmpty(),
+                activeAuthSignatureLength = result.activeAuth?.signatureLength ?: 0,
+                activeAuthDetail = result.activeAuth?.detail.orEmpty(),
 
                 ocrMrzLines = result.ocrMrz.rawLines,
                 chipMrzLines = result.chipMrz?.rawLines.orEmpty(),

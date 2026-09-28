@@ -99,12 +99,16 @@ object Tlv {
         }
 
         if (pos + valueLength > end) return null
-        val value = data.copyOfRange(pos, pos + valueLength)
-        val rawLength = (pos - start) + valueLength
+        val valueStart = pos
+        val value = data.copyOfRange(valueStart, valueStart + valueLength)
+        val rawLength = (valueStart - start) + valueLength
 
         // ---- 递归解析子节点（构造类型 tag：bit6 = 1）----
+        // 注意：必须在**原缓冲区**上按绝对偏移继续解析，而不是在 value 切片上。
+        // 否则子节点的 rawStart 会变成相对父节点 value 的偏移，
+        // 导致调用方无法用 rawStart 从原始数据中切出该节点的完整 TLV。
         val constructed = (tag and 0x20) != 0
-        val children = if (constructed) parse(value) else emptyList()
+        val children = if (constructed) parse(data, valueStart, valueLength) else emptyList()
 
         return TlvNode(tag, value, start, rawLength, children)
     }

@@ -4,6 +4,7 @@ import android.nfc.tech.IsoDep
 import com.edocreader.app.mrz.MrzFormat
 import com.edocreader.app.mrz.MrzInfo
 import com.edocreader.app.mrz.MrzParser
+import com.edocreader.app.nfc.aa.ActiveAuth
 import com.edocreader.app.nfc.dg.DgParsers
 import com.edocreader.app.nfc.pa.PassiveAuth
 import com.edocreader.app.util.Hex
@@ -38,6 +39,8 @@ class PassportReader(
         val dg14Infos: List<String>,
         val dg15Info: String?,
         val passiveAuth: PassiveAuth.Result?,
+        /** 主动认证结果；芯片未提供 DG15 时为 null。 */
+        val activeAuth: ActiveAuth.Outcome?,
         val readDataGroups: List<Int>,
         val steps: List<String>,
         val elapsedMs: Long
@@ -97,7 +100,13 @@ class PassportReader(
             val dg14 = readDataGroup(fs, EmrtdFileSystem.EF_DG14, 14, dataGroups)
             val dg15 = readDataGroup(fs, EmrtdFileSystem.EF_DG15, 15, dataGroups)
 
-            // ---- 6. EF.SOD + 被动认证 ----
+            // ---- 6. 主动认证（AA）----
+            val activeAuth = dg15?.let { performActiveAuth(fs, it) }
+            if (activeAuth == null) {
+                step("芯片未提供 DG15，跳过主动认证")
+            }
+
+            // ---- 7. EF.SOD + 被动认证 ----
             val sod = fs.readFile(EmrtdFileSystem.EF_SOD)
             val passiveAuth = if (sod != null) {
                 step("读取 EF.SOD 完成，开始被动认证…")
@@ -115,7 +124,7 @@ class PassportReader(
                 )
             }
 
-            // ---- 7. 解析 ----
+            // ---- 8. 解析 ----
             val chipMrzText = dg1?.let { DgParsers.parseDg1(it) }
             val chipMrz = chipMrzText?.let { parseChipMrz(it) }
             val face = dg2?.let { DgParsers.parseDg2(it) }
@@ -141,6 +150,7 @@ class PassportReader(
                 dg14Infos = dg14?.let { DgParsers.describeDg14(it) } ?: emptyList(),
                 dg15Info = dg15?.let { DgParsers.describeDg15(it) },
                 passiveAuth = passiveAuth,
+                activeAuth = activeAuth,
                 readDataGroups = dataGroups.keys.toList(),
                 steps = steps.toList(),
                 elapsedMs = System.currentTimeMillis() - startedAt
@@ -148,6 +158,77 @@ class PassportReader(
         } finally {
             runCatching { channel.close() }
         }
+    }
+
+    /**
+     * 执行主动认证（AA）。
+     *
+     * 用 DG15 中的公钥验证芯片对随机挑战值的签名，用于排除「芯片被克隆」。
+     * 芯片不支持 AA 时返回 verified = null 而非失败——这是证件的正常配置差异，
+     * 不应被当作读取错误。
+     */
+    private fun performActiveAuth(fs: EmrtdFileSystem, dg15: ByteArray): ActiveAuth.Outcome {
+        val key = DgParsers.parseDg15PublicKey(dg15)
+        if (key == null) {
+            step("DG15 存在但公钥无法解析，跳过主动认证")
+            return ActiveAuth.Outcome(
+                performed = false, verified = null, algorithm = null, keyDetail = null,
+                challengeHex = "", signatureLength = 0, algorithmsTried = 0,
+                detail = "DG15 中的主动认证公钥无法解析（可能使用了本机不支持的算法）"
+            )
+        }
+
+        val challenge = ActiveAuth.newChallenge()
+        step("开始主动认证：挑战值 ${Hex.encode(challenge)}（${key.detail}）")
+
+        val cmd = CommandApdu(
+            0x00, BacProtocol.INS_INTERNAL_AUTHENTICATE, 0x00, 0x00, challenge, 256
+        )
+        val rsp = try {
+            fs.sendCommand(cmd)
+        } catch (e: Exception) {
+            step("主动认证命令执行失败：${e.message}")
+            return ActiveAuth.Outcome(
+                performed = false, verified = null, algorithm = null, keyDetail = key.detail,
+                challengeHex = Hex.encode(challenge), signatureLength = 0, algorithmsTried = 0,
+                detail = "主动认证命令执行失败：${e.message}"
+            )
+        }
+
+        if (!rsp.isSuccess || rsp.data.isEmpty()) {
+            // 6A81 = 功能不支持，是「该证件未启用 AA」的正常表现
+            val notSupported = rsp.status == 0x6A81 || rsp.status == 0x6D00
+            step(
+                if (notSupported) "该证件未启用主动认证（${rsp.statusHex}）"
+                else "芯片拒绝主动认证（${rsp.statusHex}）"
+            )
+            return ActiveAuth.Outcome(
+                performed = true, verified = null, algorithm = null, keyDetail = key.detail,
+                challengeHex = Hex.encode(challenge), signatureLength = 0, algorithmsTried = 0,
+                detail = if (notSupported) "该证件未启用主动认证（芯片返回 ${rsp.statusHex}）"
+                else "芯片拒绝主动认证（芯片返回 ${rsp.statusHex}）"
+            )
+        }
+
+        val attempt = ActiveAuth.verify(challenge, rsp.data, key.publicKey)
+        step(
+            if (attempt.ok) "主动认证通过（${attempt.algorithm}）"
+            else "主动认证未通过：尝试 ${attempt.tried} 种算法均不匹配"
+        )
+        return ActiveAuth.Outcome(
+            performed = true,
+            verified = attempt.ok,
+            algorithm = attempt.algorithm,
+            keyDetail = key.detail,
+            challengeHex = Hex.encode(challenge),
+            signatureLength = rsp.data.size,
+            algorithmsTried = attempt.tried,
+            detail = if (attempt.ok) {
+                "主动认证通过，芯片持有与 DG15 公钥配对的私钥，可排除芯片克隆（${attempt.algorithm}）"
+            } else {
+                "主动认证失败：签名与 DG15 公钥不匹配，该芯片可能是克隆芯片"
+            }
+        )
     }
 
     private fun readDataGroup(

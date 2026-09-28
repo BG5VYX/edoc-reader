@@ -134,6 +134,56 @@ object DgParsers {
         return "主动认证公钥 ${subjectPublicKey.size} 字节"
     }
 
+    /** DG15 中提取出的主动认证公钥。 */
+    data class Dg15Key(
+        /** "RSA" 或 "EC"。 */
+        val keyType: String,
+        /** SubjectPublicKeyInfo 中的算法 OID。 */
+        val algorithmOid: String,
+        val publicKey: java.security.PublicKey,
+        /** 密钥位数（RSA）或曲线名（EC），用于界面展示。 */
+        val detail: String
+    )
+
+    /**
+     * 从 DG15 中提取主动认证公钥。
+     *
+     * DG15 结构（ICAO 9303-10）：
+     * ```
+     * 6F <len> SEQUENCE { AlgorithmIdentifier, BIT STRING }
+     * ```
+     * 内层 SEQUENCE 就是标准的 SubjectPublicKeyInfo，可直接交给 KeyFactory 解析。
+     */
+    fun parseDg15PublicKey(dg15: ByteArray): Dg15Key? {
+        val root = Tlv.parse(dg15).firstOrNull() ?: return null
+        val spki = root.find(0x30) ?: return null
+        val algSeq = spki.child(0x30) ?: return null
+        val oidBytes = algSeq.child(0x06)?.value ?: return null
+        val oid = decodeOid(oidBytes)
+
+        val keyType = when {
+            oid.startsWith("1.2.840.113549.1.1") -> "RSA"
+            oid == "1.2.840.10045.2.1" -> "EC"
+            else -> return null
+        }
+
+        val spkiDer = dg15.copyOfRange(spki.rawStart, spki.rawStart + spki.rawLength)
+        val key = try {
+            java.security.KeyFactory.getInstance(keyType)
+                .generatePublic(java.security.spec.X509EncodedKeySpec(spkiDer))
+        } catch (_: Exception) {
+            return null
+        }
+
+        val detail = when (key) {
+            is java.security.interfaces.RSAPublicKey -> "RSA ${key.modulus.bitLength()} 位"
+            is java.security.interfaces.ECPublicKey ->
+                "EC ${key.params.curve.field.fieldSize} 位"
+            else -> keyType
+        }
+        return Dg15Key(keyType, oid, key, detail)
+    }
+
     // -------------------------------------------------------------- EF.COM
 
     /** EF.COM 中的 tag 列表（0x5F 开头），用于判断芯片里有哪些数据组。 */

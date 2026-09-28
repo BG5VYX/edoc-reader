@@ -93,6 +93,7 @@ class ExportManager(
         "是否读取芯片", "芯片读取耗时(ms)", "芯片MRZ与OCR一致", "已读数据组", "可用数据组",
         "被动认证算法", "摘要全部匹配", "CMS签名有效", "签名证书主题", "签名证书签发者", "签名证书有效期至",
         "信任链已验证", "签发国根证书", "根证书序列号", "根证书有效期至", "信任库规模",
+        "主动认证结果", "主动认证公钥", "主动认证算法", "主动认证挑战值",
         "人脸图像文件", "人脸图像格式", "人脸图像字节数", "OCR纠错记录", "备注"
     )
 
@@ -117,6 +118,12 @@ class ExportManager(
                 if (r.cscaTrusted) "是" else "否",
                 r.cscaSubject, r.cscaSerial, r.cscaNotAfter,
                 if (r.cscaStoreSize > 0) r.cscaStoreSize.toString() else "",
+                when (r.activeAuthVerified) {
+                    true -> "通过"
+                    false -> "未通过"
+                    null -> if (r.activeAuthPerformed) "未启用" else "未执行"
+                },
+                r.activeAuthKeyDetail, r.activeAuthAlgorithm, r.activeAuthChallenge,
                 r.faceImageFileName, r.faceImageFormat, r.faceImageBytes.toString(),
                 r.ocrRepairs.joinToString("；"),
                 (r.ocrNotes + r.passiveAuthNotes).joinToString("；")

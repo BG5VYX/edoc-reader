@@ -55,6 +55,16 @@ data class DocRecord(
     val passiveAuthNotes: List<String> = emptyList(),
     val passiveAuthDgDetails: List<DgCheck> = emptyList(),
 
+    // ---- CSCA 信任链 ----
+    /** 是否链接到签发国 CSCA 根证书。 */
+    val cscaTrusted: Boolean = false,
+    val cscaSubject: String = "",
+    val cscaSerial: String = "",
+    val cscaNotAfter: String = "",
+    val cscaCurrentlyExpired: Boolean = false,
+    val cscaChainDetail: String = "",
+    val cscaStoreSize: Int = 0,
+
     // ---- 原始数据 ----
     val ocrMrzLines: List<String> = emptyList(),
     val chipMrzLines: List<String> = emptyList(),
@@ -137,6 +147,14 @@ data class DocRecord(
                 passiveAuthDgDetails = pa?.dgVerifications?.map {
                     DgCheck(it.dgNumber, it.present, it.matches, it.expectedHash, it.computedHash)
                 }.orEmpty(),
+
+                cscaTrusted = pa?.cscaTrusted ?: false,
+                cscaSubject = pa?.cscaSubject.orEmpty(),
+                cscaSerial = pa?.cscaSerial.orEmpty(),
+                cscaNotAfter = pa?.cscaNotAfter.orEmpty(),
+                cscaCurrentlyExpired = pa?.cscaCurrentlyExpired ?: false,
+                cscaChainDetail = pa?.cscaChainDetail.orEmpty(),
+                cscaStoreSize = pa?.cscaStoreSize ?: 0,
 
                 ocrMrzLines = result.ocrMrz.rawLines,
                 chipMrzLines = result.chipMrz?.rawLines.orEmpty(),

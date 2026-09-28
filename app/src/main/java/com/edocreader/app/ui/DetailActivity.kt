@@ -187,6 +187,33 @@ class DetailActivity : AppCompatActivity() {
             rows.add("签名证书主题" to record.passiveAuthSignerSubject.ifBlank { "—" })
             rows.add("签名证书签发者" to record.passiveAuthSignerIssuer.ifBlank { "—" })
             rows.add("签名证书有效期至" to record.passiveAuthSignerValidTo.ifBlank { "—" })
+
+            // CSCA 信任链
+            rows.add(
+                "信任链" to if (record.cscaTrusted) {
+                    "已验证 —— 链接到签发国根证书"
+                } else {
+                    "未通过"
+                }
+            )
+            if (record.cscaSubject.isNotBlank()) {
+                rows.add("签发国根证书" to record.cscaSubject)
+            }
+            if (record.cscaSerial.isNotBlank()) {
+                rows.add("根证书序列号" to record.cscaSerial)
+            }
+            if (record.cscaNotAfter.isNotBlank()) {
+                rows.add(
+                    "根证书有效期至" to record.cscaNotAfter +
+                        if (record.cscaCurrentlyExpired) "（已过期，历史证件仍可能合法）" else ""
+                )
+            }
+            if (record.cscaChainDetail.isNotBlank()) {
+                rows.add("信任链说明" to record.cscaChainDetail)
+            }
+            if (record.cscaStoreSize > 0) {
+                rows.add("信任库规模" to "${record.cscaStoreSize} 张 CSCA 证书")
+            }
             for (dg in record.passiveAuthDgDetails) {
                 val status = when {
                     !dg.present -> "未读取"

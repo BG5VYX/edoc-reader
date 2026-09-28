@@ -92,6 +92,7 @@ class ExportManager(
         "姓", "名", "性别", "国籍", "出生日期", "有效期至", "MRZ格式", "个人编号",
         "是否读取芯片", "芯片读取耗时(ms)", "芯片MRZ与OCR一致", "已读数据组", "可用数据组",
         "被动认证算法", "摘要全部匹配", "CMS签名有效", "签名证书主题", "签名证书签发者", "签名证书有效期至",
+        "信任链已验证", "签发国根证书", "根证书序列号", "根证书有效期至", "信任库规模",
         "人脸图像文件", "人脸图像格式", "人脸图像字节数", "OCR纠错记录", "备注"
     )
 
@@ -113,6 +114,9 @@ class ExportManager(
                 when (r.passiveAuthAllDgMatch) { true -> "是"; false -> "否"; null -> "未校验" },
                 when (r.passiveAuthCmsSignatureValid) { true -> "是"; false -> "否"; null -> "未校验" },
                 r.passiveAuthSignerSubject, r.passiveAuthSignerIssuer, r.passiveAuthSignerValidTo,
+                if (r.cscaTrusted) "是" else "否",
+                r.cscaSubject, r.cscaSerial, r.cscaNotAfter,
+                if (r.cscaStoreSize > 0) r.cscaStoreSize.toString() else "",
                 r.faceImageFileName, r.faceImageFormat, r.faceImageBytes.toString(),
                 r.ocrRepairs.joinToString("；"),
                 (r.ocrNotes + r.passiveAuthNotes).joinToString("；")

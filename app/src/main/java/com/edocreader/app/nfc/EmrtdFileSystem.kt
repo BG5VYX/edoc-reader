@@ -146,4 +146,10 @@ class EmrtdFileSystem(
         val raw = channel.transceive(wrapped.encode())
         return sm.unwrap(raw)
     }
+
+    /**
+     * 经安全报文通道发送一条任意命令。
+     * 供主动认证（INTERNAL AUTHENTICATE）等不涉及文件读写的操作使用。
+     */
+    fun sendCommand(cmd: CommandApdu): ResponseApdu = send(cmd)
 }

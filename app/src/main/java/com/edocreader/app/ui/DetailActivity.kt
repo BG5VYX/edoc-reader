@@ -229,6 +229,34 @@ class DetailActivity : AppCompatActivity() {
             addSection("被动认证", rows)
         }
 
+        // ---- 主动认证 ----
+        if (record.activeAuthDetail.isNotBlank() || record.activeAuthPerformed) {
+            val rows = mutableListOf<Pair<String, String>>()
+            rows.add(
+                "主动认证" to when (record.activeAuthVerified) {
+                    true -> "通过 —— 可排除芯片克隆"
+                    false -> "未通过 —— 该芯片可能是克隆芯片"
+                    null -> if (record.activeAuthPerformed) "未启用" else "未执行"
+                }
+            )
+            if (record.activeAuthKeyDetail.isNotBlank()) {
+                rows.add("公钥" to record.activeAuthKeyDetail)
+            }
+            if (record.activeAuthAlgorithm.isNotBlank()) {
+                rows.add("签名算法" to record.activeAuthAlgorithm)
+            }
+            if (record.activeAuthChallenge.isNotBlank()) {
+                rows.add("挑战值" to record.activeAuthChallenge)
+            }
+            if (record.activeAuthSignatureLength > 0) {
+                rows.add("签名长度" to "${record.activeAuthSignatureLength} 字节")
+            }
+            if (record.activeAuthDetail.isNotBlank()) {
+                rows.add("说明" to record.activeAuthDetail)
+            }
+            addSection("主动认证", rows)
+        }
+
         // ---- 原始 MRZ ----
         val mrzRows = mutableListOf<Pair<String, String>>()
         mrzRows.add("OCR 识别" to record.ocrMrzLines.joinToString("\n"))

@@ -1,0 +1,193 @@
+package com.edocreader.app.nfc
+
+import android.nfc.tech.IsoDep
+import com.edocreader.app.mrz.MrzFormat
+import com.edocreader.app.mrz.MrzInfo
+import com.edocreader.app.mrz.MrzParser
+import com.edocreader.app.nfc.dg.DgParsers
+import com.edocreader.app.nfc.pa.PassiveAuth
+import com.edocreader.app.util.Hex
+
+/**
+ * 完整的芯片读取流程编排。
+ *
+ * 流程（全部在本地完成，不依赖任何授权文件或联网服务）：
+ *   1. SELECT eMRTD 应用（AID A0000002471001）
+ *   2. BAC 双向认证（口令来自 OCR 识别的 MRZ 三要素）
+ *   3. 建立 3DES 安全报文通道
+ *   4. 依次读取 EF.COM / EF.DG1 / DG2 / DG11 / DG14 / DG15 / EF.SOD
+ *   5. 解析各数据组，并用 EF.SOD 做被动认证（摘要比对 + CMS 验签）
+ */
+class PassportReader(
+    private val isoDep: IsoDep,
+    private val onProgress: (String) -> Unit = {}
+) {
+
+    class ReadException(message: String) : Exception(message)
+
+    /** 读取结果。 */
+    class Result(
+        val ocrMrz: MrzInfo,
+        val chipMrz: MrzInfo?,
+        val mrzMatchesOcr: Boolean?,
+        val faceImage: ByteArray?,
+        val faceImageFormat: String?,
+        val dg11Items: List<DgParsers.Dg11Item>,
+        val nativeName: String?,
+        val availableDgTags: List<String>,
+        val dg14Infos: List<String>,
+        val dg15Info: String?,
+        val passiveAuth: PassiveAuth.Result?,
+        val readDataGroups: List<Int>,
+        val steps: List<String>,
+        val elapsedMs: Long
+    )
+
+    private val steps = mutableListOf<String>()
+
+    private fun step(message: String) {
+        steps.add(message)
+        onProgress(message)
+    }
+
+    fun read(ocrMrz: MrzInfo): Result {
+        val startedAt = System.currentTimeMillis()
+        val channel = IsoDepChannel(isoDep)
+        val fileSystemHolder = arrayOfNulls<EmrtdFileSystem>(1)
+
+        try {
+            step("已连接芯片：${Hex.encode(isoDep.tag.id)}")
+
+            // ---- 1. 选择 eMRTD 应用 ----
+            val bootstrap = EmrtdFileSystem(channel, SecureMessaging(ByteArray(16), ByteArray(16), ByteArray(8)), ::step)
+            if (!bootstrap.selectApplication()) {
+                throw ReadException("未能选择 eMRTD 应用，请确认证件为带芯片的电子护照 / 电子通行证")
+            }
+            step("已选择 eMRTD 应用")
+
+            // ---- 2. BAC ----
+            step("开始 BAC 双向认证…")
+            val bac = BacProtocol(channel)
+            val session = try {
+                bac.perform(ocrMrz.mrzInformation)
+            } catch (e: BacProtocol.BacException) {
+                throw ReadException(
+                    "BAC 认证失败：${e.message}\n" +
+                        "常见原因：MRZ 三要素识别有误、证件已锁定（多次失败会锁定，需等待或到发证机关解锁）、" +
+                        "或该证件仅支持 PACE。"
+                )
+            }
+            step("BAC 认证通过，会话密钥已协商")
+
+            // ---- 3. 安全报文通道 ----
+            val sm = SecureMessaging(session.ksEnc, session.ksMac, session.ssc)
+            val fs = EmrtdFileSystem(channel, sm, ::step)
+            fileSystemHolder[0] = fs
+
+            // ---- 4. EF.COM ----
+            val efCom = fs.readFile(EmrtdFileSystem.EF_COM)
+            val dgTags = efCom?.let { DgParsers.parseEfCom(it) } ?: emptyList()
+            step("EF.COM：芯片包含数据组 ${dgTags.joinToString(", ").ifEmpty { "未知" }}")
+
+            // ---- 5. 依次读取数据组 ----
+            val dataGroups = linkedMapOf<Int, ByteArray>()
+            val dg1 = readDataGroup(fs, EmrtdFileSystem.EF_DG1, 1, dataGroups)
+            val dg2 = readDataGroup(fs, EmrtdFileSystem.EF_DG2, 2, dataGroups)
+            val dg11 = readDataGroup(fs, EmrtdFileSystem.EF_DG11, 11, dataGroups)
+            val dg14 = readDataGroup(fs, EmrtdFileSystem.EF_DG14, 14, dataGroups)
+            val dg15 = readDataGroup(fs, EmrtdFileSystem.EF_DG15, 15, dataGroups)
+
+            // ---- 6. EF.SOD + 被动认证 ----
+            val sod = fs.readFile(EmrtdFileSystem.EF_SOD)
+            val passiveAuth = if (sod != null) {
+                step("读取 EF.SOD 完成，开始被动认证…")
+                runCatching { PassiveAuth.verify(sod, dataGroups) }
+                    .onFailure { step("被动认证执行异常：${it.message}") }
+                    .getOrNull()
+            } else {
+                step("芯片未提供 EF.SOD，跳过被动认证")
+                null
+            }
+            passiveAuth?.let {
+                step(
+                    "被动认证：摘要比对 ${if (it.allDgHashesMatch) "全部通过" else "存在不一致"}；" +
+                        "CMS 签名 ${when (it.cmsSignatureValid) { true -> "有效"; false -> "无效"; null -> "未校验" }}"
+                )
+            }
+
+            // ---- 7. 解析 ----
+            val chipMrzText = dg1?.let { DgParsers.parseDg1(it) }
+            val chipMrz = chipMrzText?.let { parseChipMrz(it) }
+            val face = dg2?.let { DgParsers.parseDg2(it) }
+            val dg11Items = dg11?.let { DgParsers.parseDg11(it) } ?: emptyList()
+
+            val mrzMatches = chipMrz?.let { c ->
+                c.documentNumber == ocrMrz.documentNumber &&
+                    c.dateOfBirth == ocrMrz.dateOfBirth &&
+                    c.dateOfExpiry == ocrMrz.dateOfExpiry
+            }
+
+            step("读取完成，用时 ${(System.currentTimeMillis() - startedAt)} ms")
+
+            return Result(
+                ocrMrz = ocrMrz,
+                chipMrz = chipMrz,
+                mrzMatchesOcr = mrzMatches,
+                faceImage = face?.bytes,
+                faceImageFormat = face?.format,
+                dg11Items = dg11Items,
+                nativeName = DgParsers.extractNativeName(dg11Items),
+                availableDgTags = dgTags,
+                dg14Infos = dg14?.let { DgParsers.describeDg14(it) } ?: emptyList(),
+                dg15Info = dg15?.let { DgParsers.describeDg15(it) },
+                passiveAuth = passiveAuth,
+                readDataGroups = dataGroups.keys.toList(),
+                steps = steps.toList(),
+                elapsedMs = System.currentTimeMillis() - startedAt
+            )
+        } finally {
+            runCatching { channel.close() }
+        }
+    }
+
+    private fun readDataGroup(
+        fs: EmrtdFileSystem,
+        fileId: Int,
+        dgNumber: Int,
+        sink: MutableMap<Int, ByteArray>
+    ): ByteArray? {
+        val data = try {
+            fs.readFile(fileId)
+        } catch (e: Exception) {
+            step("读取 DG$dgNumber 失败：${e.message}")
+            null
+        }
+        if (data == null) {
+            step("DG$dgNumber 不存在或读取失败")
+        } else {
+            sink[dgNumber] = data
+            step("DG$dgNumber 读取成功（${data.size} 字节）")
+        }
+        return data
+    }
+
+    /** 把芯片 DG1 中的 MRZ 文本切成行组后解析。 */
+    private fun parseChipMrz(mrzText: String): MrzInfo? {
+        val clean = mrzText.replace("\r", "").replace("\n", "")
+        val candidates = when {
+            clean.length == 88 -> listOf(clean.substring(0, 44), clean.substring(44, 88))
+            clean.length == 90 -> listOf(clean.substring(0, 30), clean.substring(30, 60), clean.substring(60, 90))
+            clean.length == 72 -> listOf(clean.substring(0, 36), clean.substring(36, 72))
+            else -> {
+                // 尝试按固定宽度切分
+                val format = MrzFormat.TD3
+                if (clean.length % format.lineLength == 0) {
+                    clean.chunked(format.lineLength)
+                } else {
+                    return null
+                }
+            }
+        }
+        return MrzParser.parse(candidates)
+    }
+}

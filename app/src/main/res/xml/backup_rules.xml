@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  证件数据属于高敏感个人信息，明确排除在自动备份之外，
+  避免通过 adb backup / 云备份等渠道外泄。
+-->
+<full-backup-content>
+    <exclude domain="file" path="records/" />
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>

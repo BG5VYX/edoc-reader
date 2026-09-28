@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.EdocReader" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/app_primary</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorSecondary">@color/app_accent</item>
+        <item name="colorError">@color/app_error</item>
+        <item name="android:colorBackground">@color/app_background</item>
+        <item name="colorSurface">@color/app_surface</item>
+        <item name="colorOnSurface">@color/app_on_surface</item>
+        <item name="colorOutline">@color/app_outline</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/app_primary_dark</item>
+    </style>
+
+    <style name="Theme.EdocReader.Fullscreen" parent="Theme.EdocReader">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+    </style>
+
+    <style name="TextAppearance.EdocReader.SectionTitle" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:textColor">@color/app_primary</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.EdocReader.Label" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textColor">@color/app_on_surface_variant</item>
+    </style>
+
+    <style name="TextAppearance.EdocReader.Value" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/app_on_surface</item>
+    </style>
+
+    <style name="Widget.EdocReader.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">0dp</item>
+    </style>
+</resources>

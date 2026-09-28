@@ -54,7 +54,20 @@ object PassiveAuth {
         val signerValidFrom: String?,
         val signerValidTo: String?,
         val signerExpired: Boolean,
-        val cscaChainVerified: Boolean,
+        /** 是否成功把 DSC 链接到信任库中的签发国 CSCA。 */
+        val cscaTrusted: Boolean,
+        /** 命中的根证书主体名称。 */
+        val cscaSubject: String?,
+        /** 命中的根证书序列号（十六进制）。 */
+        val cscaSerial: String?,
+        /** 根证书有效期截止时间。 */
+        val cscaNotAfter: String?,
+        /** 根证书当前是否已过期（历史证件仍可能合法，故仅作提示）。 */
+        val cscaCurrentlyExpired: Boolean,
+        /** 信任链回溯的结论说明。 */
+        val cscaChainDetail: String,
+        /** 信任库中的证书总数。 */
+        val cscaStoreSize: Int,
         val messages: List<String>
     ) {
         val allDgHashesMatch: Boolean
@@ -100,14 +113,22 @@ object PassiveAuth {
         }
 
         val cert = info.signerCertificate
-        val expired = cert?.let {
-            try {
-                it.checkValidity()
-                false
-            } catch (_: Exception) {
-                true
-            }
-        } ?: false
+        val expired = cert?.let { isExpired(it) } ?: false
+
+        // 信任链：把文档签名证书链接到签发国 CSCA 根证书
+        val chain = if (cert == null) {
+            CscaChain.Chain(false, emptyList(), "未从 EF.SOD 中取得签名者证书")
+        } else {
+            CscaTrustStore.verify(cert)
+        }
+        val root = chain.path.lastOrNull()
+
+        if (cert != null) {
+            messages.add(
+                if (chain.trusted) "信任链验证通过：${root?.subjectX500Principal?.name}"
+                else "信任链未通过：${chain.detail}"
+            )
+        }
 
         return Result(
             hashAlgorithm = info.hashAlgorithm,
@@ -118,9 +139,22 @@ object PassiveAuth {
             signerValidFrom = cert?.notBefore?.toString(),
             signerValidTo = cert?.notAfter?.toString(),
             signerExpired = expired,
-            cscaChainVerified = false,
+            cscaTrusted = chain.trusted,
+            cscaSubject = root?.subjectX500Principal?.name,
+            cscaSerial = root?.serialNumber?.toString(16),
+            cscaNotAfter = root?.notAfter?.toString(),
+            cscaCurrentlyExpired = root?.let { isExpired(it) } ?: false,
+            cscaChainDetail = chain.detail,
+            cscaStoreSize = CscaTrustStore.size,
             messages = messages + info.messages
         )
+    }
+
+    private fun isExpired(cert: X509Certificate): Boolean = try {
+        cert.checkValidity()
+        false
+    } catch (_: Exception) {
+        true
     }
 
     // ------------------------------------------------------------------ SOD

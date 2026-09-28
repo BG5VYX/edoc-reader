@@ -1,0 +1,19 @@
+{
+  "generated": "2026-09-28T19:48:08Z",
+  "count": 513,
+  "skipped_invalid": 0,
+  "size_bytes": 845655,
+  "sources": [
+    {
+      "name": "German Master List (BSI)",
+      "url": "https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/ElekAusweise/CSCA/GermanMasterList.html",
+      "file": "DE_ML_2026-08-19-10-28-54.ml"
+    },
+    {
+      "name": "Netherlands Master List (NPKD)",
+      "url": "https://www.npkd.nl/masterlist.html",
+      "file": "NL_ML_2026-07-22.ml"
+    }
+  ],
+  "note": "证书为各国政府公开发布的 CSCA 公钥证书，不含任何私钥。输入已先用 JDK 的 CertificateFactory 预筛选，剔除了使用显式 EC 参数（自定义曲线）而无法被 Android/JDK 解析的证书。"
+}

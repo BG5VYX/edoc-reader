@@ -94,7 +94,7 @@ tr:nth-child(even) td { background: #fafafa; }
       <tr><td>分析对象</td><td>国家移民管理局《出入境证件电子信息识读认证软件》Android 版 / Windows 版</td></tr>
       <tr><td>技术基线</td><td>ICAO Doc 9303 Part 3 / Part 10 / Part 11</td></tr>
       <tr><td>配套实现</td><td>EdocReader —— Android 端独立实现（源码 + APK）</td></tr>
-      <tr><td>验证状态</td><td>密码学环节已通过 ICAO 官方工作样例逐字节验证；28 项单元测试全部通过</td></tr>
+      <tr><td>验证状态</td><td>密码学环节已通过 ICAO 官方工作样例逐字节验证；39 项单元测试全部通过；内置 513 张 CSCA 证书（覆盖 103 个国家/地区）</td></tr>
       <tr><td>报告日期</td><td>2026 年 9 月 29 日</td></tr>
     </table>
   </div>
@@ -152,6 +152,7 @@ tr:nth-child(even) td { background: #fafafa; }
         <li>OCR 识别方案</li>
         <li>密码学实现与官方验证</li>
         <li>本地存储与批量导出</li>
+        <li>CSCA 信任库与信任链验证</li>
         <li>与官方 SDK 的能力对比</li>
       </ol>
     </li>
@@ -198,14 +199,17 @@ tr:nth-child(even) td { background: #fafafa; }
 
 <div class="note">
 <b>结论二：官方 SDK 的壁垒不在算法，而在工程积累与授权体系。</b>
-SDK 真正的独占资产是：中国证件专用 OCR 训练集、中国 CSCA 根证书库、以及服务端的查验结论能力。
+SDK 真正的独占资产是：中国证件专用 OCR 训练集、中国 CSCA 证书库、以及服务端的查验结论能力。
 算法层面（BAC、安全报文、数据组解析）无任何独占性。
+而且经实测，其 CSCA 库仅 10 张证书、全部是中国签发、其中 2 张已过期——
+公开主列表可提供 513 张、覆盖 103 个国家/地区的更新数据，这一项壁垒也远没有想象中高。
 </div>
 
 <div class="note">
 <b>结论三：独立实现是可行且已经验证的。</b>
 本项目从零实现的 BAC 认证与安全报文，已用 ICAO Doc 9303 Part 11 附录 D 的官方工作样例
-逐字节比对通过；全部 28 项单元测试通过；已构建出可安装的 Android 应用。
+逐字节比对通过；全部 39 项单元测试通过；已构建出可安装的 Android 应用，
+并内置 CSCA 信任库完成签发国信任链验证。
 </div>
 
 <div class="note warn">
@@ -973,12 +977,11 @@ ISO 7816-4 短 APDU 的单次响应上限为 256 字节，而安全报文的密�
 </svg>
 <div class="cap">图 4-6　被动认证：摘要比对 + CMS 签名验证</div>
 
-<div class="note warn">
-<b>信任链的最后一环需要 CSCA 主列表。</b>
-DSC 证书由签发国的 CSCA 签发。要确认「这张 DSC 确实属于中国」，必须持有中国 CSCA 的根证书
-并进行链式验证。本项目未内置各国 CSCA 主列表，因此只能给出
-「数据组摘要一致 + SOD 签名有效」的结论，并在界面中如实标注为
-「未与 CSCA 主列表比对」。这是与官方 SDK 的主要能力差距之一，也是后续可补齐的方向。
+<div class="note">
+<b>信任链的最后一环：CSCA 主列表。</b>
+DSC 证书由签发国的 CSCA 签发。要确认「这张 DSC 确实属于某国」，必须持有该国的 CSCA 根证书
+并进行链式验证。<b>本项目已内置这份信任库</b>——513 张 CSCA 公钥证书，覆盖 103 个国家/地区，
+把 DSC 沿签发关系逐级上溯到自签名根，从而给出「签发国可信」的完整结论（详见 5.6 节）。
 </div>
 <!-- ==================== 第 5 章 ==================== -->
 <h1>第 5 章　本项目的技术方案</h1>
@@ -1158,7 +1161,151 @@ MRZ 的校验位设计使得「单字符误识」几乎必然导致校验失败�
   <tr><td>导出：ZIP</td><td>records.json + records.csv + faces/ + README.txt，一次性打包全部记录与图像</td></tr>
 </table>
 
-<h2>5.6　与官方 SDK 的能力对比</h2>
+<h2>5.6　CSCA 信任库与信任链验证</h2>
+<p>
+被动认证只能证明「数据没被改过」。要回答「这张证件是不是某国真签发的」，
+必须把文档签名证书（DSC）沿签发关系逐级上溯，直到命中签发国的 CSCA 根证书。
+本节说明这份信任库的来源、规模与验证逻辑。
+</p>
+
+<h3>5.6.1　为什么不直接用官方 SDK 的证书库</h3>
+<p>
+官方 SDK 的 Android 包中带有 <code>assets/db_csca.db3</code>（SQLite 格式）。
+实测其 <code>tb_csca</code> 表只有 <b>10 条记录，且全部是中国签发</b>，
+其中 2 张已经过期：
+</p>
+<table>
+  <tr><th style="width:52mm">证书主体</th><th style="width:24mm">序列号</th><th style="width:26mm">有效期至</th><th>状态</th></tr>
+  <tr><td>台湾居民来往大陆通行证 CSCA</td><td><code>6afc9716…</code></td><td>2024-05-12</td><td><b>已过期</b></td></tr>
+  <tr><td>China Passport CSCA</td><td><code>706e2cbc…</code></td><td>2026-02-18</td><td><b>已过期</b></td></tr>
+  <tr><td>港澳居民来往内地通行证 CSCA</td><td><code>49bbfb71…</code></td><td>2026-08-25</td><td>即将过期</td></tr>
+  <tr><td>其余 7 张</td><td>—</td><td>2027 ~ 2033</td><td>有效</td></tr>
+</table>
+<p>
+只有 10 张、全部是中国、部分已过期——这远不足以支撑可信的信任链判定。
+公开渠道能获得更新、更全的主列表，因此本项目改从公开来源获取。
+</p>
+
+<h3>5.6.2　公开来源与提取过程</h3>
+<table>
+  <tr><th style="width:48mm">来源</th><th>说明</th></tr>
+  <tr><td>德国 BSI German Master List</td><td>德国联邦信息安全局公开发布，文件名 <code>DE_ML_2026-08-19-10-28-54.ml</code>（933 KB）</td></tr>
+  <tr><td>荷兰 NPKD Netherlands Master List</td><td>荷兰国家公钥目录公开发布，文件名 <code>NL_ML_2026-07-22.ml</code>（624 KB）</td></tr>
+</table>
+<p>
+<code>.ml</code> 文件是 <b>CMS SignedData</b> 格式（外层 OID <code>1.2.840.113549.1.7.2</code>），
+用 <code>openssl cms -verify -inform DER -noverify</code> 可解出内层内容，
+其结构为 <code>SEQUENCE { INTEGER version, SET OF SEQUENCE(certificate) }</code>。
+遍历该 SET 即可取出全部证书。
+</p>
+
+<svg class="dg" viewBox="0 0 680 232" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="14" y="8" width="652" height="216" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">从公开主列表到应用信任库的处理链路</text>
+
+  <rect x="30" y="42" width="140" height="58" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="100" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">官方主列表</text>
+  <text x="100" y="79" font-size="8.5" text-anchor="middle" fill="#555">20 个 .ml 文件</text>
+  <text x="100" y="93" font-size="8.5" text-anchor="middle" fill="#555">CMS SignedData</text>
+
+  <path d="M170 71L196 71" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a7)"/>
+
+  <rect x="200" y="42" width="140" height="58" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="270" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">提取证书</text>
+  <text x="270" y="79" font-size="8.5" text-anchor="middle" fill="#555">openssl 解 CMS</text>
+  <text x="270" y="93" font-size="8.5" text-anchor="middle" fill="#555">遍历 SET 取 DER</text>
+
+  <path d="M340 71L366 71" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a7)"/>
+
+  <rect x="370" y="42" width="140" height="58" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
+  <text x="440" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">JDK 预筛选</text>
+  <text x="440" y="79" font-size="8.5" text-anchor="middle" fill="#333">用运行时的同一解析器</text>
+  <text x="440" y="93" font-size="8.5" text-anchor="middle" fill="#333">剔除不可解析证书</text>
+
+  <path d="M510 71L536 71" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a7)"/>
+
+  <rect x="540" y="42" width="110" height="58" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="595" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">打包</text>
+  <text x="595" y="79" font-size="8.5" text-anchor="middle" fill="#555">紧凑二进制</text>
+  <text x="595" y="93" font-size="8.5" text-anchor="middle" fill="#555">826 KB</text>
+
+  <rect x="30" y="112" width="620" height="100" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="46" y="132" font-size="9.8" font-weight="700" fill="#000">关键坑：JDK 拒绝显式 EC 参数证书</text>
+  <text x="46" y="152" font-size="9" fill="#333">Python 的 cryptography 能解析 705 张，而 JDK / Android 的 CertificateFactory 只能解析 513 张——</text>
+  <text x="46" y="168" font-size="9" fill="#333">它会拒绝<b>所有</b>使用显式 EC 参数（自定义曲线）的证书，报 <tspan font-family="Consolas, monospace">Only named ECParameters supported</tspan>。</text>
+  <text x="46" y="184" font-size="9" fill="#333">而 cryptography 能容忍映射到标准曲线（secp256r1 等）的显式参数，因此两者判断相差 65 张。</text>
+  <text x="46" y="202" font-size="9" fill="#000" font-weight="700">结论：必须用 JDK 自身的解析器做预筛选，不能依赖第三方库的判断。</text>
+</svg>
+<div class="cap">图 5-3　信任库的构建链路与 JDK 预筛选的必要性</div>
+
+<h3>5.6.3　信任库规模与覆盖</h3>
+<div class="stats">
+  <div class="stat"><span class="v">513</span><span class="k">CSCA 证书</span></div>
+  <div class="stat"><span class="v">103</span><span class="k">覆盖国家/地区</span></div>
+  <div class="stat"><span class="v">33</span><span class="k">中国相关证书</span></div>
+  <div class="stat"><span class="v">826<span style="font-size:9pt">KB</span></span><span class="k">随 APK 打包</span></div>
+</div>
+<table>
+  <tr><th style="width:56mm">类别</th><th style="width:22mm">数量</th><th>说明</th></tr>
+  <tr><td>中国护照 CSCA（外交部）</td><td>16 张</td><td>2010 ~ 2024 各期签发，含 SHA-1 与 SHA-256 两种签名算法</td></tr>
+  <tr><td>中国澳门</td><td>8 张</td><td>澳门特别行政区身份证明局签发</td></tr>
+  <tr><td>中国台湾地区</td><td>7 张</td><td>2011 ~ 2024 各期</td></tr>
+  <tr><td>中国香港</td><td>2 张</td><td>香港特别行政区入境事务处签发（另有 3 张因显式 EC 参数被剔除）</td></tr>
+  <tr><td>其他国家/地区</td><td>480 张</td><td>覆盖 99 个国家/地区</td></tr>
+</table>
+
+<h3>5.6.4　信任链回溯逻辑</h3>
+<p>
+验证从 EF.SOD 中的 DSC 出发，逐级向上回溯：用「上一级证书的公钥」验证「下一级证书的签名」，
+直到遇到自签名证书（即签发国根）为止。
+</p>
+
+<svg class="dg" viewBox="0 0 680 236" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="14" y="8" width="652" height="220" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">信任链回溯（最大深度 4 层，兼容 CSCA 轮换产生的 link 证书）</text>
+
+  <rect x="30" y="46" width="130" height="52" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="95" y="66" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">DSC</text>
+  <text x="95" y="83" font-size="8.5" text-anchor="middle" fill="#555">EF.SOD 中的签名证书</text>
+
+  <path d="M160 72L186 72" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a8)"/>
+
+  <rect x="190" y="46" width="130" height="52" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="255" y="66" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">签发者（同名候选）</text>
+  <text x="255" y="83" font-size="8.5" text-anchor="middle" fill="#555">逐张试签直到命中</text>
+
+  <path d="M320 72L346 72" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a8)"/>
+
+  <rect x="350" y="46" width="130" height="52" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="415" y="66" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">是否自签名</text>
+  <text x="415" y="83" font-size="8.5" text-anchor="middle" fill="#555">subject == issuer ?</text>
+
+  <path d="M480 72L506 72" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a8)"/>
+
+  <rect x="510" y="46" width="140" height="52" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
+  <text x="580" y="66" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">链接到签发国根</text>
+  <text x="580" y="83" font-size="8.5" text-anchor="middle" fill="#333">判定「签发国可信」</text>
+
+  <rect x="30" y="112" width="620" height="102" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="46" y="132" font-size="9.8" font-weight="700" fill="#000">失败情形均给出明确原因，不静默失败</text>
+  <text x="46" y="152" font-size="9" fill="#333">· 信任库中没有该签发者 → 「信任库中没有该签发者：&lt;DN&gt;」</text>
+  <text x="46" y="168" font-size="9" fill="#333">· 找到同名签发者但签名不匹配 → 「找到 N 张同名签发者证书，但签名均不匹配」</text>
+  <text x="46" y="184" font-size="9" fill="#333">· 证书链出现环 → 「证书链出现环，已中止」</text>
+  <text x="46" y="200" font-size="9" fill="#333">· 超过最大深度 → 「证书链超过最大深度 4，未能到达根证书」</text>
+</svg>
+<div class="cap">图 5-4　信任链回溯流程与失败情形的明确反馈</div>
+
+<h2>5.7　与官方 SDK 的能力对比</h2>
 <table>
   <tr><th style="width:30mm">能力维度</th><th style="width:36mm">官方 SDK</th><th>本项目</th></tr>
   <tr><td>MRZ 识别</td><td>Tesseract + 证件专用训练集</td><td>ML Kit 文本识别 + 自研行组提取与校验位纠错</td></tr>
@@ -1167,7 +1314,7 @@ MRZ 的校验位设计使得「单字符误识」几乎必然导致校验失败�
   <tr><td>安全报文</td><td>3DES 安全报文</td><td>3DES 安全报文（自研，含完整 MAC 校验）</td></tr>
   <tr><td>数据解析</td><td>原生实现</td><td>自研 BER-TLV / DG1 / DG2 / DG11 / DG14 / DG15</td></tr>
   <tr><td>签名验证</td><td>OpenSSL + CSCA 库 + 服务端</td><td>自研 DER/CMS 解析 + Android JCE 验签</td></tr>
-  <tr><td>CSCA 信任链</td><td><b>内置中国 CSCA 库，可判定签发国可信</b></td><td><b>无内置主列表，只能给出摘要一致 + 签名有效</b></td></tr>
+  <tr><td>CSCA 信任链</td><td>内置中国 CSCA 库（10 张），可判定中国证件</td><td><b>内置 513 张证书、覆盖 103 个国家/地区</b>，可判定签发国可信</td></tr>
   <tr><td>联网</td><td>必须（授权校验）</td><td>完全不需要</td></tr>
   <tr><td>授权文件</td><td>必须</td><td>不需要</td></tr>
   <tr><td>数据出境</td><td>存在与自有服务端交互</td><td>数据不出设备</td></tr>
@@ -1194,16 +1341,17 @@ MRZ 的校验位设计使得「单字符误识」几乎必然导致校验失败�
 
 <h2>6.2　单元测试与验证结果</h2>
 <div class="stats">
-  <div class="stat"><span class="v">28</span><span class="k">单元测试总数</span></div>
-  <div class="stat"><span class="v">28</span><span class="k">通过</span></div>
+  <div class="stat"><span class="v">39</span><span class="k">单元测试总数</span></div>
+  <div class="stat"><span class="v">39</span><span class="k">通过</span></div>
   <div class="stat"><span class="v">0</span><span class="k">失败</span></div>
   <div class="stat"><span class="v">9</span><span class="k">ICAO 官方向量断言</span></div>
 </div>
 
 <table>
-  <tr><th style="width:56mm">测试类</th><th style="width:16mm">用例数</th><th>覆盖内容</th></tr>
+  <tr><th style="width:52mm">测试类</th><th style="width:16mm">用例数</th><th>覆盖内容</th></tr>
   <tr><td><code>DesCryptoTest</code></td><td>9</td><td>KDF 派生、Retail MAC、ISO 9797-1 填充、E.IFD / M.IFD 计算、会话密钥派生、SSC 构造——全部对照 ICAO 官方值</td></tr>
   <tr><td><code>MrzParserTest</code></td><td>19</td><td>校验位算法、TD3/TD1 解析、MRZi 口令长度、日期换算、证件类型标签、行组提取、字母数字混淆纠错、行长偏差对齐、过期判定</td></tr>
+  <tr><td><code>CscaTrustStoreTest</code></td><td>11</td><td>用<b>真实 CSCA 证书</b>断言：信任库解析与规模、覆盖国家数、自签名根可通过验证、剔除签发者后链断裂、空库返回失败、同主体多张证书逐张试签</td></tr>
 </table>
 
 <div class="note">
@@ -1268,7 +1416,8 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
 <ul>
   <li>仅实现 <b>BAC</b>。若证件为 <b>PACE-only</b>，则无法读取，应用会明确报错而非静默失败；</li>
   <li>仅实现<b>被动认证</b>，未实现主动认证（AA）与芯片认证（CA），因此无法判定芯片是否被克隆；</li>
-  <li>未内置各国 CSCA 证书主列表，无法给出「签发国可信」的完整信任链结论；</li>
+  <li>信任库<b>不含证书吊销列表（CRL）</b>，无法反映已吊销的证书；</li>
+  <li>信任库中有 199 张证书使用了显式 EC 参数（自定义曲线），JDK / Android 无法解析，已在打包阶段剔除；</li>
   <li>人脸图像支持 JPEG；JPEG 2000 格式可被识别并原样保存，但 Android 原生无法直接显示；</li>
   <li>往来港澳通行证、往来台湾通行证在<b>格式与协议层面已支持</b>（TD1 三行机读区 + BAC），
       但尚未经过真机验证，实际可用性取决于证件是否支持 BAC 以及 OCR 识别率。</li>
@@ -1279,7 +1428,7 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
   <tr><th style="width:12mm">优先级</th><th style="width:44mm">方向</th><th>预期收益</th></tr>
   <tr><td>高</td><td>通行证专用 OCR 预处理</td><td>卡式证件机读区字号小、反光强，需透视校正与二值化预处理提升识别率</td></tr>
   <tr><td>高</td><td>PACE 支持</td><td>覆盖仅支持 PACE 的新版证件，显著扩大可用范围</td></tr>
-  <tr><td>中</td><td>内置 CSCA 主列表</td><td>补齐信任链最后一环，给出「签发国可信」的结论</td></tr>
+  <tr><td>中</td><td>证书吊销列表（CRL）</td><td>信任链已可验证，但无法反映已吊销证书</td></tr>
   <tr><td>中</td><td>主动认证 / 芯片认证</td><td>具备克隆芯片检测能力</td></tr>
   <tr><td>中</td><td>JPEG 2000 解码</td><td>部分证件人脸图像为该格式，解码后可正常显示</td></tr>
   <tr><td>低</td><td>多帧投票与透视校正</td><td>进一步提升复杂光照下的 OCR 稳定性</td></tr>
@@ -1292,9 +1441,10 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
 官方 SDK 的价值在于中国证件专用 OCR 模型、CSCA 证书库与服务端查验结论这类<b>工程积累</b>，
 而不在于算法本身的独占性。因此，<b>独立实现是一条可行、合法且已经验证的路径</b>。<br><br>
 本项目用「零授权依赖、零第三方密码学库、完全离线」的方式完成了这条路径：
-BAC 与安全报文已通过 ICAO 官方向量逐字节验证，28 项单元测试全部通过，
-构建出可安装的 Android 应用，源码与 APK 均已交付。<br><br>
-同时必须正视能力边界：缺少 CSCA 主列表与 PACE 支持，
+BAC 与安全报文已通过 ICAO 官方向量逐字节验证，39 项单元测试全部通过，
+并内置了覆盖 103 个国家/地区的 CSCA 信任库，完成从数据完整性到签发国可信的完整验证链路。
+源码与 APK 均已交付。<br><br>
+同时必须正视能力边界：缺少 PACE 支持、缺少证书吊销列表，
 意味着当前实现尚不能替代官方 SDK 在强监管场景下的地位。
 但在个人自查、自有设备集成、技术研究与教学等场景中，
 它提供了一条不受授权约束、数据不出设备、代码完全可控的技术选择。

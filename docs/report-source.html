@@ -94,7 +94,7 @@ tr:nth-child(even) td { background: #fafafa; }
       <tr><td>分析对象</td><td>国家移民管理局《出入境证件电子信息识读认证软件》Android 版 / Windows 版</td></tr>
       <tr><td>技术基线</td><td>ICAO Doc 9303 Part 3 / Part 10 / Part 11</td></tr>
       <tr><td>配套实现</td><td>EdocReader —— Android 端独立实现（源码 + APK）</td></tr>
-      <tr><td>验证状态</td><td>密码学环节已通过 ICAO 官方工作样例逐字节验证；39 项单元测试全部通过；内置 513 张 CSCA 证书（覆盖 103 个国家/地区）</td></tr>
+      <tr><td>验证状态</td><td>密码学环节已通过 ICAO 官方工作样例逐字节验证；61 项单元测试全部通过；内置 513 张 CSCA 证书（覆盖 103 个国家/地区）</td></tr>
       <tr><td>报告日期</td><td>2026 年 9 月 29 日</td></tr>
     </table>
   </div>
@@ -153,6 +153,7 @@ tr:nth-child(even) td { background: #fafafa; }
         <li>密码学实现与官方验证</li>
         <li>本地存储与批量导出</li>
         <li>CSCA 信任库与信任链验证</li>
+        <li>主动认证（AA）与芯片克隆检测</li>
         <li>与官方 SDK 的能力对比</li>
       </ol>
     </li>
@@ -208,8 +209,8 @@ SDK 真正的独占资产是：中国证件专用 OCR 训练集、中国 CSCA �
 <div class="note">
 <b>结论三：独立实现是可行且已经验证的。</b>
 本项目从零实现的 BAC 认证与安全报文，已用 ICAO Doc 9303 Part 11 附录 D 的官方工作样例
-逐字节比对通过；全部 39 项单元测试通过；已构建出可安装的 Android 应用，
-并内置 CSCA 信任库完成签发国信任链验证。
+逐字节比对通过；全部 61 项单元测试通过；已构建出可安装的 Android 应用，
+并内置 CSCA 信任库完成签发国信任链验证、实现主动认证完成芯片克隆检测。
 </div>
 
 <div class="note warn">
@@ -661,7 +662,7 @@ MRZ 中每个数字字段后都跟一位校验位，算法在 ICAO Doc 9303 Part
   <text x="263" y="108" font-size="8.8" text-anchor="middle" fill="#333">解决：谁能读（更强）</text>
   <text x="263" y="126" font-size="8.8" text-anchor="middle" fill="#333">口令来源：MRZ / CAN</text>
   <text x="263" y="144" font-size="8.8" text-anchor="middle" fill="#333">算法：ECDH 密钥协商</text>
-  <text x="263" y="164" font-size="8.8" text-anchor="middle" fill="#666">未实现（后续演进）</text>
+  <text x="263" y="164" font-size="8.8" text-anchor="middle" fill="#666">未实现（依赖 brainpool 曲线）</text>
 
   <rect x="346" y="42" width="150" height="132" rx="7" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
   <text x="421" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="#000">PA</text>
@@ -672,14 +673,14 @@ MRZ 中每个数字字段后都跟一位校验位，算法在 ICAO Doc 9303 Part
   <text x="421" y="144" font-size="8.8" text-anchor="middle" fill="#333">算法：CMS 签名验签</text>
   <text x="421" y="164" font-size="8.8" text-anchor="middle" fill="#000" font-weight="700">本项目已实现</text>
 
-  <rect x="504" y="42" width="150" height="132" rx="7" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <rect x="504" y="42" width="150" height="132" rx="7" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
   <text x="579" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="#000">AA / CA</text>
   <text x="579" y="80" font-size="8.8" text-anchor="middle" fill="#555">主动认证 / 芯片认证</text>
-  <line x1="518" y1="90" x2="640" y2="90" stroke="#ccc" stroke-width="0.6"/>
+  <line x1="518" y1="90" x2="640" y2="90" stroke="#bbb" stroke-width="0.6"/>
   <text x="579" y="108" font-size="8.8" text-anchor="middle" fill="#333">解决：芯片是否克隆</text>
   <text x="579" y="126" font-size="8.8" text-anchor="middle" fill="#333">依据：芯片私钥挑战应答</text>
   <text x="579" y="144" font-size="8.8" text-anchor="middle" fill="#333">算法：RSA / ECDSA</text>
-  <text x="579" y="164" font-size="8.8" text-anchor="middle" fill="#666">未实现（后续演进）</text>
+  <text x="579" y="164" font-size="8.8" text-anchor="middle" fill="#000" font-weight="700">AA 已实现 / CA 未实现</text>
 </svg>
 <div class="cap">图 3-5　四类安全机制的分工与本项目实现状态</div>
 
@@ -1305,7 +1306,79 @@ MRZ 的校验位设计使得「单字符误识」几乎必然导致校验失败�
 </svg>
 <div class="cap">图 5-4　信任链回溯流程与失败情形的明确反馈</div>
 
-<h2>5.7　与官方 SDK 的能力对比</h2>
+<h2>5.7　主动认证（AA）与芯片克隆检测</h2>
+<p>
+前三道验证（数据摘要、CMS 签名、CSCA 信任链）解决的都是「数据与签发者」的可信问题，
+它们有一个共同的盲区：<b>无法区分真芯片与克隆芯片</b>。
+</p>
+<p>
+攻击者可以把真芯片的全部数据（DG1、DG2、EF.SOD……）原样读出并写入另一颗可写芯片。
+此时数据组摘要完全一致、DSC 签名完全有效、CSCA 信任链也完全成立——
+<b>前三道验证会全部通过</b>。唯一的破绽是：克隆芯片里没有真芯片那颗
+只存于芯片内部、永不外泄的私钥。
+</p>
+
+<svg class="dg" viewBox="0 0 680 274" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="14" y="8" width="652" height="258" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">克隆攻击：前三道验证全部通过，只有 AA 能识破</text>
+
+  <rect x="60" y="40" width="180" height="52" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="150" y="60" font-size="9.6" font-weight="700" text-anchor="middle" fill="#000">真芯片</text>
+  <text x="150" y="78" font-size="8.6" text-anchor="middle" fill="#555">内部私钥永不外泄</text>
+
+  <path d="M240 66L436 66" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a9)"/>
+  <text x="338" y="58" font-size="8.8" text-anchor="middle" fill="#333">读出全部数据并原样写入</text>
+
+  <rect x="440" y="40" width="180" height="52" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
+  <text x="530" y="60" font-size="9.6" font-weight="700" text-anchor="middle" fill="#000">克隆芯片</text>
+  <text x="530" y="78" font-size="8.6" text-anchor="middle" fill="#333">数据完全一致，但没有私钥</text>
+
+  <text x="30" y="114" font-size="9.6" font-weight="700" fill="#333">对克隆芯片执行三道验证：</text>
+
+  <rect x="40" y="124" width="186" height="76" rx="6" fill="#633806" stroke="#EF9F27" stroke-width="0.5"/>
+  <text x="133" y="144" font-size="9.6" font-weight="700" text-anchor="middle" fill="#FAC775">被动认证 PA</text>
+  <text x="133" y="164" font-size="9.2" text-anchor="middle" fill="#EF9F27">通过</text>
+  <text x="133" y="182" font-size="8.4" text-anchor="middle" fill="#EF9F27">数据组摘要与 EF.SOD 一致</text>
+
+  <rect x="247" y="124" width="186" height="76" rx="6" fill="#633806" stroke="#EF9F27" stroke-width="0.5"/>
+  <text x="340" y="144" font-size="9.6" font-weight="700" text-anchor="middle" fill="#FAC775">CSCA 信任链</text>
+  <text x="340" y="164" font-size="9.2" text-anchor="middle" fill="#EF9F27">通过</text>
+  <text x="340" y="182" font-size="8.4" text-anchor="middle" fill="#EF9F27">DSC 签名有效且可上溯</text>
+
+  <rect x="454" y="124" width="186" height="76" rx="6" fill="#085041" stroke="#5DCAA5" stroke-width="1.5"/>
+  <text x="547" y="144" font-size="9.6" font-weight="700" text-anchor="middle" fill="#9FE1CB">主动认证 AA</text>
+  <text x="547" y="164" font-size="9.2" text-anchor="middle" fill="#5DCAA5">失败</text>
+  <text x="547" y="182" font-size="8.4" text-anchor="middle" fill="#5DCAA5">无私钥，无法对挑战值签名</text>
+
+  <rect x="40" y="212" width="600" height="42" rx="6" fill="#085041" stroke="#5DCAA5" stroke-width="0.5"/>
+  <text x="56" y="230" font-size="9.4" font-weight="700" fill="#9FE1CB">AA 流程</text>
+  <text x="56" y="246" font-size="8.8" fill="#5DCAA5">读卡器发 8 字节随机挑战 → 芯片用 DG15 对应私钥签名 → 读卡器用 DG15 公钥验签；挑战值每次随机，无法录制重放</text>
+</svg>
+<div class="cap">图 5-5　克隆攻击场景下三道验证的表现：只有 AA 能识破</div>
+
+<h3>5.7.1　实现要点</h3>
+<table>
+  <tr><th style="width:44mm">要点</th><th>说明</th></tr>
+  <tr><td>挑战值</td><td>长度固定 8 字节（ICAO 9303-11），由 <code>SecureRandom</code> 生成</td></tr>
+  <tr><td>命令</td><td><code>INTERNAL AUTHENTICATE</code>（INS <code>0x88</code>），经<b>安全报文通道</b>发送</td></tr>
+  <tr><td>公钥来源</td><td>DG15 中的 SubjectPublicKeyInfo，可直接交给 <code>KeyFactory</code> 还原为公钥对象</td></tr>
+  <tr><td>签名算法</td><td><b>不唯一</b>——ICAO 允许芯片自行选择，只要与 DG15 公钥类型匹配。实现按同类型全部候选算法逐个尝试，命中即通过</td></tr>
+  <tr><td>候选算法</td><td>RSA：<code>SHA256/SHA1/SHA384/SHA512 with RSA</code>；EC：对应的 ECDSA 变体</td></tr>
+  <tr><td>未启用时</td><td>芯片返回 <code>6A81</code>（功能不支持）时判定为「该证件未启用 AA」，<b>而非失败</b>——这是证件的正常配置差异</td></tr>
+</table>
+
+<div class="note warn">
+<b>为什么不做芯片认证（CA）？</b>
+CA 与 PACE 同属一个体系，都依赖 brainpool 曲线族，而 JDK / Android 的 JCE 不支持该曲线族。
+在无法用标准库实现的前提下，自行实现椭圆曲线运算的风险远高于收益，因此与 PACE 一并搁置。
+</div>
+
+<h2>5.8　与官方 SDK 的能力对比</h2>
 <table>
   <tr><th style="width:30mm">能力维度</th><th style="width:36mm">官方 SDK</th><th>本项目</th></tr>
   <tr><td>MRZ 识别</td><td>Tesseract + 证件专用训练集</td><td>ML Kit 文本识别 + 自研行组提取与校验位纠错</td></tr>
@@ -1318,7 +1391,7 @@ MRZ 的校验位设计使得「单字符误识」几乎必然导致校验失败�
   <tr><td>联网</td><td>必须（授权校验）</td><td>完全不需要</td></tr>
   <tr><td>授权文件</td><td>必须</td><td>不需要</td></tr>
   <tr><td>数据出境</td><td>存在与自有服务端交互</td><td>数据不出设备</td></tr>
-  <tr><td>主动认证 / 芯片认证</td><td>支持</td><td>未实现</td></tr>
+  <tr><td>主动认证 / 芯片认证</td><td>支持</td><td><b>AA 已实现</b>（挑战-应答验签，可排除克隆）；CA 未实现</td></tr>
   <tr><td>PACE</td><td>支持</td><td>未实现（仅 BAC）</td></tr>
   <tr><td>代码可控性</td><td>闭源二进制</td><td>完整源码，可审计、可定制、可维护</td></tr>
 </table>
@@ -1341,16 +1414,18 @@ MRZ 的校验位设计使得「单字符误识」几乎必然导致校验失败�
 
 <h2>6.2　单元测试与验证结果</h2>
 <div class="stats">
-  <div class="stat"><span class="v">39</span><span class="k">单元测试总数</span></div>
-  <div class="stat"><span class="v">39</span><span class="k">通过</span></div>
+  <div class="stat"><span class="v">61</span><span class="k">单元测试总数</span></div>
+  <div class="stat"><span class="v">61</span><span class="k">通过</span></div>
   <div class="stat"><span class="v">0</span><span class="k">失败</span></div>
   <div class="stat"><span class="v">9</span><span class="k">ICAO 官方向量断言</span></div>
 </div>
 
 <table>
-  <tr><th style="width:52mm">测试类</th><th style="width:16mm">用例数</th><th>覆盖内容</th></tr>
+  <tr><th style="width:50mm">测试类</th><th style="width:14mm">用例数</th><th>覆盖内容</th></tr>
   <tr><td><code>DesCryptoTest</code></td><td>9</td><td>KDF 派生、Retail MAC、ISO 9797-1 填充、E.IFD / M.IFD 计算、会话密钥派生、SSC 构造——全部对照 ICAO 官方值</td></tr>
   <tr><td><code>MrzParserTest</code></td><td>19</td><td>校验位算法、TD3/TD1 解析、MRZi 口令长度、日期换算、证件类型标签、行组提取、字母数字混淆纠错、行长偏差对齐、过期判定</td></tr>
+  <tr><td><code>TlvTest</code></td><td>8</td><td>BER-TLV 解析、<code>rawStart</code>/<code>rawLength</code> 语义（含多层嵌套）、长形式长度、多字节 tag、边界与截断数据</td></tr>
+  <tr><td><code>ActiveAuthTest</code></td><td>14</td><td>挑战值随机性、RSA/EC 验签往返、篡改挑战值必须失败、<b>克隆芯片的错配公钥必须被识破</b>、签名截断、DG15 公钥解析与端到端验签</td></tr>
   <tr><td><code>CscaTrustStoreTest</code></td><td>11</td><td>用<b>真实 CSCA 证书</b>断言：信任库解析与规模、覆盖国家数、自签名根可通过验证、剔除签发者后链断裂、空库返回失败、同主体多张证书逐张试签</td></tr>
 </table>
 
@@ -1415,7 +1490,10 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
 <p><b>当前能力边界（如实说明）：</b></p>
 <ul>
   <li>仅实现 <b>BAC</b>。若证件为 <b>PACE-only</b>，则无法读取，应用会明确报错而非静默失败；</li>
-  <li>仅实现<b>被动认证</b>，未实现主动认证（AA）与芯片认证（CA），因此无法判定芯片是否被克隆；</li>
+  <li>已实现<b>主动认证（AA）</b>，可排除芯片克隆；但未实现<b>芯片认证（CA）</b>——CA 只在 PACE 体系下使用，
+      依赖同样的 brainpool 曲线支持，因此与 PACE 一并搁置；</li>
+  <li>未实现 <b>PACE</b> 的原因：eMRTD 的 PACE 默认使用 brainpool 曲线，而 JDK / Android 的 JCE
+      不支持该曲线族，也不支持 AES-CMAC，需自行实现椭圆曲线运算，风险与收益不成比例；</li>
   <li>信任库<b>不含证书吊销列表（CRL）</b>，无法反映已吊销的证书；</li>
   <li>信任库中有 199 张证书使用了显式 EC 参数（自定义曲线），JDK / Android 无法解析，已在打包阶段剔除；</li>
   <li>人脸图像支持 JPEG；JPEG 2000 格式可被识别并原样保存，但 Android 原生无法直接显示；</li>
@@ -1429,7 +1507,7 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
   <tr><td>高</td><td>通行证专用 OCR 预处理</td><td>卡式证件机读区字号小、反光强，需透视校正与二值化预处理提升识别率</td></tr>
   <tr><td>高</td><td>PACE 支持</td><td>覆盖仅支持 PACE 的新版证件，显著扩大可用范围</td></tr>
   <tr><td>中</td><td>证书吊销列表（CRL）</td><td>信任链已可验证，但无法反映已吊销证书</td></tr>
-  <tr><td>中</td><td>主动认证 / 芯片认证</td><td>具备克隆芯片检测能力</td></tr>
+  <tr><td>中</td><td>芯片认证（CA）</td><td>AA 已实现；CA 依赖 brainpool，需先解决曲线支持</td></tr>
   <tr><td>中</td><td>JPEG 2000 解码</td><td>部分证件人脸图像为该格式，解码后可正常显示</td></tr>
   <tr><td>低</td><td>多帧投票与透视校正</td><td>进一步提升复杂光照下的 OCR 稳定性</td></tr>
 </table>
@@ -1441,9 +1519,9 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
 官方 SDK 的价值在于中国证件专用 OCR 模型、CSCA 证书库与服务端查验结论这类<b>工程积累</b>，
 而不在于算法本身的独占性。因此，<b>独立实现是一条可行、合法且已经验证的路径</b>。<br><br>
 本项目用「零授权依赖、零第三方密码学库、完全离线」的方式完成了这条路径：
-BAC 与安全报文已通过 ICAO 官方向量逐字节验证，39 项单元测试全部通过，
-并内置了覆盖 103 个国家/地区的 CSCA 信任库，完成从数据完整性到签发国可信的完整验证链路。
-源码与 APK 均已交付。<br><br>
+BAC 与安全报文已通过 ICAO 官方向量逐字节验证，61 项单元测试全部通过，
+并内置了覆盖 103 个国家/地区的 CSCA 信任库，完成从数据完整性到签发国可信的完整验证链路；
+同时实现主动认证，具备芯片克隆检测能力。源码与 APK 均已交付。<br><br>
 同时必须正视能力边界：缺少 PACE 支持、缺少证书吊销列表，
 意味着当前实现尚不能替代官方 SDK 在强监管场景下的地位。
 但在个人自查、自有设备集成、技术研究与教学等场景中，

@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>出入境证件识读技术报告</title>
+<style>
+@page { size: A4; margin: 17mm 15mm 16mm 15mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", "Source Han Sans SC", sans-serif;
+  color: #111; font-size: 10.5pt; line-height: 1.78; margin: 0;
+}
+h1 {
+  font-size: 19pt; font-weight: 700; color: #000; margin: 0 0 4mm 0;
+  padding-bottom: 2.5mm; border-bottom: 2.5px solid #000;
+  page-break-before: always; page-break-after: avoid;
+}
+h1.first { page-break-before: avoid; }
+h2 { font-size: 13pt; font-weight: 700; color: #000; margin: 7mm 0 2.5mm; page-break-after: avoid; }
+h3 { font-size: 11.5pt; font-weight: 700; color: #222; margin: 5mm 0 2mm; page-break-after: avoid; }
+p { margin: 0 0 2.6mm; text-align: justify; }
+ul, ol { margin: 0 0 2.8mm; padding-left: 6.5mm; }
+li { margin-bottom: 1.1mm; }
+code, .mono { font-family: Consolas, "Courier New", monospace; font-size: 9pt; background: #f0f0f0; padding: 0.3mm 1mm; border: 0.4px solid #ccc; }
+pre {
+  font-family: Consolas, "Courier New", monospace; font-size: 8.6pt; line-height: 1.5;
+  background: #f7f7f7; border: 0.6px solid #bbb; border-left: 3px solid #333;
+  padding: 2.5mm 3mm; margin: 2.5mm 0 3.5mm; white-space: pre-wrap; word-break: break-all;
+  page-break-inside: avoid;
+}
+table { width: 100%; border-collapse: collapse; margin: 2.5mm 0 4mm; font-size: 9.3pt; page-break-inside: avoid; }
+th { background: #e6e6e6; border: 0.6px solid #666; padding: 1.7mm 2mm; text-align: left; font-weight: 700; }
+td { border: 0.6px solid #999; padding: 1.6mm 2mm; vertical-align: top; }
+tr:nth-child(even) td { background: #fafafa; }
+.dg { width: 100%; height: auto; display: block; margin: 3mm 0 1.5mm; page-break-inside: avoid; }
+.cap { font-size: 8.8pt; color: #555; text-align: center; margin: 0 0 4.5mm; }
+.note {
+  border: 0.6px solid #999; border-left: 3px solid #333; background: #f7f7f7;
+  padding: 2.5mm 3mm; margin: 2.5mm 0 3.5mm; font-size: 9.6pt; page-break-inside: avoid;
+}
+.note b { color: #000; }
+.warn { border-left-color: #000; background: #ededed; }
+.pagebreak { page-break-before: always; }
+
+/* ---- 封面 ---- */
+.cover { height: 252mm; display: flex; flex-direction: column; justify-content: space-between; }
+.cover-top { border-top: 4px solid #000; border-bottom: 1px solid #000; padding: 5mm 0 4mm; margin-top: 16mm; }
+.cover-kicker { font-size: 9.5pt; letter-spacing: 3px; color: #555; margin-bottom: 3mm; }
+.cover h1.ct { font-size: 27pt; line-height: 1.3; border: none; padding: 0; margin: 0 0 4mm; page-break-before: avoid; }
+.cover .sub { font-size: 12pt; color: #333; line-height: 1.7; }
+.cover-meta { font-size: 9.6pt; color: #333; }
+.cover-meta table { font-size: 9.6pt; margin: 0; }
+.cover-meta td { border: none; border-bottom: 0.5px solid #bbb; padding: 2mm 0; background: none !important; }
+.cover-meta td:first-child { width: 32mm; color: #666; }
+.cover-foot { border-top: 1px solid #000; padding-top: 3mm; font-size: 8.8pt; color: #555; }
+
+/* ---- 目录 ---- */
+.toc h1 { page-break-before: always; }
+.toc ol { list-style: none; padding: 0; counter-reset: ch; }
+.toc > ol > li {
+  counter-increment: ch; font-weight: 700; font-size: 11pt;
+  margin: 3.2mm 0 1.2mm; padding-bottom: 1mm; border-bottom: 0.5px dotted #aaa;
+}
+.toc > ol > li::before { content: "第 " counter(ch) " 章  "; color: #666; font-weight: 400; }
+.toc ol ol { list-style: none; padding-left: 5mm; margin: 1mm 0 0; }
+.toc ol ol li { font-weight: 400; font-size: 9.6pt; color: #333; margin: 0.6mm 0; }
+.toc ol ol li::before { content: "— "; color: #999; }
+
+/* ---- 统计块 ---- */
+.stats { display: flex; gap: 3mm; margin: 3mm 0 4mm; }
+.stat { flex: 1; border: 0.8px solid #333; padding: 3mm 2mm; text-align: center; page-break-inside: avoid; }
+.stat .v { font-size: 16pt; font-weight: 700; color: #000; display: block; line-height: 1.2; }
+.stat .k { font-size: 8.5pt; color: #555; display: block; margin-top: 1mm; }
+</style>
+</head>
+<body>
+
+<!-- ==================== 封面 ==================== -->
+<div class="cover">
+  <div>
+    <div class="cover-top">
+      <div class="cover-kicker">技 术 分 析 报 告</div>
+      <h1 class="ct">出入境证件电子信息识读<br>原理与实现方案</h1>
+      <div class="sub">
+        官方 SDK 逆向分析 · ICAO Doc 9303 协议握手过程<br>
+        独立自研实现的技术路线与验证结果
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    <table>
+      <tr><td>报告主题</td><td>出入境证件识读 SDK 原理分析与自研替代方案</td></tr>
+      <tr><td>分析对象</td><td>国家移民管理局《出入境证件电子信息识读认证软件》Android 版 / Windows 版</td></tr>
+      <tr><td>技术基线</td><td>ICAO Doc 9303 Part 3 / Part 10 / Part 11</td></tr>
+      <tr><td>配套实现</td><td>EdocReader —— Android 端独立实现（源码 + APK）</td></tr>
+      <tr><td>验证状态</td><td>密码学环节已通过 ICAO 官方工作样例逐字节验证；28 项单元测试全部通过</td></tr>
+      <tr><td>报告日期</td><td>2026 年 9 月 29 日</td></tr>
+    </table>
+  </div>
+
+  <div class="cover-foot">
+    本报告基于公开发布的软件包目录结构、公开头文件、公开接口文档，以及可执行文件的符号表与导入导出表进行分析，
+    不包含对目标软件的反编译或源代码还原。仅供技术研究与学习交流使用。
+  </div>
+</div>
+
+<!-- ==================== 目录 ==================== -->
+<div class="toc">
+  <h1>目 录</h1>
+  <ol>
+    <li>研究背景与结论摘要
+      <ol>
+        <li>报告要解决的问题</li>
+        <li>核心结论</li>
+        <li>术语与缩略语</li>
+      </ol>
+    </li>
+    <li>官方 SDK 逆向分析
+      <ol>
+        <li>产品形态与总体定位</li>
+        <li>Android SDK 目录结构与组成</li>
+        <li>Windows SDK 目录结构与组成</li>
+        <li>主要接口与调用方式</li>
+        <li>第三方依赖分析</li>
+        <li>授权机制剖析</li>
+      </ol>
+    </li>
+    <li>证件识读的技术原理
+      <ol>
+        <li>eMRTD 体系与 ICAO Doc 9303</li>
+        <li>机读区 MRZ 规格</li>
+        <li>校验位算法</li>
+        <li>芯片文件系统与数据组</li>
+        <li>安全机制总览</li>
+      </ol>
+    </li>
+    <li>协议握手过程详解
+      <ol>
+        <li>BAC 握手完整时序</li>
+        <li>密钥派生 KDF</li>
+        <li>安全报文封装与解封</li>
+        <li>会话计数器 SSC</li>
+        <li>文件读取的分块策略</li>
+        <li>被动认证流程</li>
+      </ol>
+    </li>
+    <li>本项目的技术方案
+      <ol>
+        <li>总体架构与设计原则</li>
+        <li>模块划分与代码结构</li>
+        <li>OCR 识别方案</li>
+        <li>密码学实现与官方验证</li>
+        <li>本地存储与批量导出</li>
+        <li>与官方 SDK 的能力对比</li>
+      </ol>
+    </li>
+    <li>构建、验证与交付
+      <ol>
+        <li>工具链与构建配置</li>
+        <li>单元测试与验证结果</li>
+        <li>构建产物</li>
+      </ol>
+    </li>
+    <li>合规、隐私与结论
+      <ol>
+        <li>法律与合规边界</li>
+        <li>隐私保护设计</li>
+        <li>能力边界与后续演进</li>
+      </ol>
+    </li>
+  </ol>
+</div>
+
+<!-- ==================== 第 1 章 ==================== -->
+<h1>第 1 章　研究背景与结论摘要</h1>
+
+<h2>1.1　报告要解决的问题</h2>
+<p>
+出入境证件（电子护照、往来港澳通行证、往来台湾通行证等）内含符合 ISO/IEC 14443 的非接触式芯片，
+芯片中保存着经签发国数字签名的持证人资料与人脸图像。读取这些数据需要一套完整的软硬件链路：
+摄像头识别机读区、NFC 建立通信、密码学认证、按标准解析数据结构、验证签名。
+</p>
+<p>
+官方提供的《出入境证件电子信息识读认证软件》SDK 封装了上述全部能力，但存在两个现实约束：
+其一，SDK 依赖授权文件、设备指纹与服务端校验，无授权文件无法工作；
+其二，授权与设备绑定，难以在自有设备上自由部署。
+本报告要回答的核心问题是：<b>这套读证能力，究竟是必须依赖官方 SDK 的私有技术，还是可以通过公开国际标准独立实现？</b>
+</p>
+
+<h2>1.2　核心结论</h2>
+
+<div class="note">
+<b>结论一：读证能力完全由公开国际标准定义。</b>
+证件芯片的数据结构、访问控制协议、安全报文格式、签名验证方式，全部由 ICAO Doc 9303 明确规定，
+是公开的、可独立实现的国际标准，不属于任何厂商的私有技术。
+</div>
+
+<div class="note">
+<b>结论二：官方 SDK 的壁垒不在算法，而在工程积累与授权体系。</b>
+SDK 真正的独占资产是：中国证件专用 OCR 训练集、中国 CSCA 根证书库、以及服务端的查验结论能力。
+算法层面（BAC、安全报文、数据组解析）无任何独占性。
+</div>
+
+<div class="note">
+<b>结论三：独立实现是可行且已经验证的。</b>
+本项目从零实现的 BAC 认证与安全报文，已用 ICAO Doc 9303 Part 11 附录 D 的官方工作样例
+逐字节比对通过；全部 28 项单元测试通过；已构建出可安装的 Android 应用。
+</div>
+
+<div class="note warn">
+<b>结论四：绕过官方 SDK 的授权校验不可行、不必要、且存在法律风险。</b>
+授权校验包含服务端环节，本地无法绕过；且绕过技术保护措施可能违反《著作权法》与《刑法》相关规定。
+由于标准是公开的，正确路径是独立实现，而非破解。
+</div>
+
+<h2>1.3　术语与缩略语</h2>
+<table>
+  <tr><th style="width:26mm">缩写</th><th style="width:52mm">全称</th><th>说明</th></tr>
+  <tr><td><b>MRZ</b></td><td>Machine Readable Zone</td><td>证件机读区，资料页下方 2~3 行等宽字符</td></tr>
+  <tr><td><b>eMRTD</b></td><td>electronic Machine Readable Travel Document</td><td>带非接触芯片的机读旅行证件</td></tr>
+  <tr><td><b>LDS</b></td><td>Logical Data Structure</td><td>芯片内数据的逻辑组织结构</td></tr>
+  <tr><td><b>DG</b></td><td>Data Group</td><td>数据组，LDS 的基本单元（DG1、DG2 等）</td></tr>
+  <tr><td><b>SOD</b></td><td>Document Security Object</td><td>证件安全对象，保存各数据组摘要与签名</td></tr>
+  <tr><td><b>BAC</b></td><td>Basic Access Control</td><td>基础访问控制，基于 MRZ 口令的对称认证</td></tr>
+  <tr><td><b>PACE</b></td><td>Password Authenticated Connection Establishment</td><td>口令认证连接建立，BAC 的增强替代方案</td></tr>
+  <tr><td><b>PA</b></td><td>Passive Authentication</td><td>被动认证，验证数据未被篡改</td></tr>
+  <tr><td><b>AA</b></td><td>Active Authentication</td><td>主动认证，验证芯片非克隆</td></tr>
+  <tr><td><b>CA</b></td><td>Chip Authentication</td><td>芯片认证，PACE 体系下的克隆防护</td></tr>
+  <tr><td><b>SM</b></td><td>Secure Messaging</td><td>安全报文，对 APDU 做加密与完整性保护</td></tr>
+  <tr><td><b>SSC</b></td><td>Send Sequence Counter</td><td>发送序列计数器，防止重放攻击</td></tr>
+  <tr><td><b>KDF</b></td><td>Key Derivation Function</td><td>密钥派生函数</td></tr>
+  <tr><td><b>CSCA</b></td><td>Country Signing Certification Authority</td><td>国家签名认证机构，信任链根节点</td></tr>
+  <tr><td><b>DSC</b></td><td>Document Signer Certificate</td><td>文档签名证书，由 CSCA 签发</td></tr>
+  <tr><td><b>APDU</b></td><td>Application Protocol Data Unit</td><td>ISO 7816-4 定义的应用协议数据单元</td></tr>
+  <tr><td><b>TLV</b></td><td>Tag-Length-Value</td><td>标签-长度-值编码，BER-TLV 为其中一种</td></tr>
+</table>
+
+<!-- ==================== 第 2 章 ==================== -->
+<h1>第 2 章　官方 SDK 逆向分析</h1>
+
+<h2>2.1　产品形态与总体定位</h2>
+<p>
+该软件以 SDK 形式交付，面向需要在自有系统中集成出入境证件识读能力的集成商，
+提供 Android 与 Windows 两个平台的实现。其功能覆盖两大环节：
+<b>光学识读</b>（识别证件表面机读区 MRZ 与视读区信息）与
+<b>芯片识读</b>（通过 NFC / PC-SC 读取芯片内加密数据）。
+</p>
+<p>
+两个平台的实现共享同一套底层能力模型：OCR 引擎 + 芯片通信 + 密码学 + 数据解析 + 授权校验。
+差异主要在外围：Android 侧走手机 NFC 与摄像头，Windows 侧走 PC/SC 读卡器与摄像头。
+</p>
+
+<h2>2.2　Android SDK 目录结构与组成</h2>
+<p>Android 版以 AAR（Android Archive）形式交付，解包后结构如下：</p>
+
+<svg class="dg" viewBox="0 0 680 268" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="8" y="6" width="664" height="256" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="24" y="26" font-size="12" font-weight="700" fill="#000">Android SDK（AAR 解包结构）</text>
+
+  <rect x="24" y="38" width="300" height="52" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="36" y="56" font-size="10.5" font-weight="700" fill="#000">classes.jar</text>
+  <text x="36" y="72" font-size="9.5" fill="#444">Java / Kotlin 门面层与业务编排</text>
+  <text x="36" y="85" font-size="9.5" fill="#444">cn.gov.nia.mrtd.NiaMRTDSdk</text>
+
+  <rect x="340" y="38" width="316" height="52" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="352" y="56" font-size="10.5" font-weight="700" fill="#000">jni/ 原生库</text>
+  <text x="352" y="72" font-size="9.5" fill="#444">arm64-v8a / armeabi-v7a 双架构</text>
+  <text x="352" y="85" font-size="9.5" fill="#444">libniamrtd.so（1.19 MB）、libnjaeppinsp.so（2.53 MB）</text>
+
+  <rect x="24" y="100" width="632" height="88" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="36" y="118" font-size="10.5" font-weight="700" fill="#000">assets/ 资源与模型</text>
+  <rect x="36" y="128" width="146" height="24" rx="4" fill="#eee" stroke="#999" stroke-width="0.6"/>
+  <text x="109" y="144" font-size="9" text-anchor="middle" fill="#222">niamrtd.properties</text>
+  <rect x="190" y="128" width="140" height="24" rx="4" fill="#eee" stroke="#999" stroke-width="0.6"/>
+  <text x="260" y="144" font-size="9" text-anchor="middle" fill="#222">config.properties</text>
+  <rect x="338" y="128" width="130" height="24" rx="4" fill="#eee" stroke="#999" stroke-width="0.6"/>
+  <text x="403" y="144" font-size="9" text-anchor="middle" fill="#222">db_csca.db3</text>
+  <rect x="476" y="128" width="168" height="24" rx="4" fill="#eee" stroke="#999" stroke-width="0.6"/>
+  <text x="560" y="144" font-size="9" text-anchor="middle" fill="#222">pscp.lar / pst.traineddata</text>
+  <text x="36" y="172" font-size="9.3" fill="#444">· db_csca.db3：SQLite 格式，含 tb_csca（中国 CSCA 证书，10 条）与 tb_client 表</text>
+  <text x="36" y="184" font-size="9.3" fill="#444">· pst.traineddata：Tesseract 训练数据；pscp.lar：压缩资源包</text>
+
+  <rect x="24" y="198" width="632" height="50" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="36" y="216" font-size="10.5" font-weight="700" fill="#000">AndroidManifest.xml / R.txt / proguard.txt</text>
+  <text x="36" y="234" font-size="9.5" fill="#444">声明相机与 NFC 权限、SDK 版本约束、混淆规则；不含任何业务代码</text>
+</svg>
+<div class="cap">图 2-1　Android SDK 的组成结构：门面层 + 原生库 + 模型资源</div>
+
+<h2>2.3　Windows SDK 目录结构与组成</h2>
+<p>Windows 版以 DLL + 模型文件 + 授权文件的形式交付，核心组成如下：</p>
+
+<table>
+  <tr><th style="width:56mm">文件 / 目录</th><th style="width:22mm">体积</th><th>作用推断</th></tr>
+  <tr><td><b>NJAEIDSDK.dll</b></td><td>—</td><td>对外主接口库，导出 <code>NM_*</code> 系列函数</td></tr>
+  <tr><td><b>niamrtd.dll</b></td><td>—</td><td>证件识读核心实现（与 Android 侧 <code>libniamrtd.so</code> 同源）</td></tr>
+  <tr><td><b>xd_passport.dll</b></td><td>—</td><td>护照资料页图像处理 / 版面分析</td></tr>
+  <tr><td><b>opencv_world320.dll</b></td><td>约 35 MB</td><td>OpenCV 3.2 全量库，用于图像预处理</td></tr>
+  <tr><td><b>opencv_xfeatures2d320.dll</b></td><td>—</td><td>OpenCV 特征点模块，用于图像配准 / 校正</td></tr>
+  <tr><td><b>mrz.model</b></td><td>约 3.9 MB</td><td>MRZ 识别模型（XML 格式，疑似级联分类器）</td></tr>
+  <tr><td><b>VerifySOD.mdb</b></td><td>—</td><td>SOD 签名验证所需数据（Access 数据库格式）</td></tr>
+  <tr><td><b>CVCA/</b></td><td>—</td><td>CSCA 证书目录，构成信任链根节点</td></tr>
+  <tr><td><b>NJAEIDSDK.LIC</b></td><td>—</td><td><b>授权文件</b>，无此文件 SDK 拒绝工作</td></tr>
+  <tr><td>WinSCard.dll</td><td>—</td><td>系统 PC/SC 接口，用于连接读卡器</td></tr>
+</table>
+
+<h2>2.4　主要接口与调用方式</h2>
+
+<h3>2.4.1　Android 侧接口</h3>
+<p>Android 侧采用「门面类 + 回调」的经典设计，对外暴露的入口类是 <code>cn.gov.nia.mrtd.NiaMRTDSdk</code>：</p>
+<pre>// 门面类主要方法（依据公开接口文档整理）
+NiaMRTDSdk.create(Activity activity)                  // 创建实例，需传入 Activity
+void  readMRZ(NiaCallback callback)                   // 光学识读：OCR 识别 MRZ
+void  readChipData(NiaCallback callback)              // 芯片识读：自动取 MRZ 后读卡
+void  readChipData(String docNo, String birth, String expiry, NiaCallback cb)
+                                                      // 芯片识读：手工传入三要素
+
+// 回调接口
+interface NiaCallback {
+    void onResult(...);   // 成功
+    void onError(...);    // 失败
+    void onCancle(...);   // 用户取消
+}
+
+// 结果键常量（共 13 个 Key_* 常量），例如证件号、姓名、出生日期、
+// 有效期、签发国、人脸图像、原始 MRZ、状态等</pre>
+
+<p>底层实现类 <code>com.bjnja.nmrtd.NjaMRTDSdk</code> 与 <code>com.bjnja.nmrtd.common.MRTDReader</code>
+通过 JNI 调用原生库：</p>
+<pre>// NjaMRTDSdk
+private native boolean checkMrzInformation(String[] mrz);   // 校验 MRZ 合法性
+private native int     _init(String[] deviceInfo);          // 初始化（接收 IMEI / 手机号 / 定位）
+
+// MRTDReader
+private native byte[]  EppReadChipData(...);   // 读取芯片数据
+private native byte[]  getFacialImage(...);    // 取人脸图像
+private native String  getTagStr(...);         // 按 TAG 取字段
+private native int     AddCscaToStore(...);    // 向 CSCA 库添加证书</pre>
+
+<h3>2.4.2　Windows 侧接口</h3>
+<p>Windows 侧导出标准 C 接口，函数名前缀为 <code>NM_</code>（Nia MRZ/MRTD）：</p>
+<table>
+  <tr><th style="width:44mm">导出函数</th><th>功能</th></tr>
+  <tr><td><code>NM_Init</code> / <code>NM_DeInit</code></td><td>初始化与释放 SDK 全局资源</td></tr>
+  <tr><td><code>NM_ParseMRZ</code></td><td>解析 MRZ 字符串为结构化字段</td></tr>
+  <tr><td><code>NM_IsParsedMRZ</code></td><td>判断 MRZ 是否解析成功 / 校验位是否通过</td></tr>
+  <tr><td><code>NM_ReadEpp</code> / <code>NM_ReadEppEx</code></td><td>读取电子护照芯片数据（Ex 为扩展版）</td></tr>
+  <tr><td><code>NMC_GetEppInfo</code></td><td>按 TAG 枚举读取结果中的字段</td></tr>
+  <tr><td><code>NMC_FreeContext</code></td><td>释放上下文</td></tr>
+  <tr><td><code>NM_ListReaders</code></td><td>枚举 PC/SC 读卡器</td></tr>
+  <tr><td><code>NMH_WaitCard</code> / <code>NMH_WaitCancel</code></td><td>等待卡片放入 / 取消等待</td></tr>
+</table>
+<p>
+结果字段通过 <code>ItemInfoTag</code> 枚举寻址，覆盖证件号、姓名、出生日期、有效期、
+签发机关、人脸图像、证件状态等，编号从 <code>0x0101</code>（CertName）延续到 <code>0x4001</code>（Status）。
+</p>
+
+<h2>2.5　第三方依赖分析</h2>
+<table>
+  <tr><th style="width:40mm">依赖</th><th style="width:30mm">平台</th><th>用途与观察</th></tr>
+  <tr><td>OpenSSL</td><td>Android（静态链接）</td><td>提供 DES/3DES、SHA、RSA、X.509 等密码学原语</td></tr>
+  <tr><td>OpenCV 3.2</td><td>Windows</td><td>图像预处理、特征点配准；体积达 35 MB</td></tr>
+  <tr><td>Tesseract</td><td>Android / Windows</td><td>OCR 引擎，配合 <code>pst.traineddata</code> 与 <code>mrz.model</code></td></tr>
+  <tr><td>libjpeg-turbo</td><td>Android</td><td>JPEG 编解码，用于 DG2 人脸图像</td></tr>
+  <tr><td>OpenJPEG</td><td>Android</td><td>JPEG 2000 编解码，部分证件人脸图像使用该格式</td></tr>
+  <tr><td>libcurl</td><td>Android</td><td><b>联网组件</b>，用于与服务端通信（授权校验与数据回传）</td></tr>
+  <tr><td>SQLite</td><td>Android</td><td>读写 <code>db_csca.db3</code> CSCA 证书库</td></tr>
+  <tr><td>WinSCard</td><td>Windows</td><td>PC/SC 读卡器接口</td></tr>
+</table>
+
+<div class="note warn">
+<b>安全观察（如实记录）：</b>Android 版 <code>assets/config.properties</code> 以明文保存了数据库账号
+（<code>DB_USERNAME=bjnjaca</code> / <code>DB_PASSWORD=www.bjnja.ca</code>）；
+CSCA 证书库在运行时被释放到外部存储 <code>/sdcard/</code> 路径下。
+这两点在安全设计上属于值得关注的薄弱环节，本报告仅作客观记录，不对其成因作评价。
+</div>
+
+<h2>2.6　授权机制剖析</h2>
+<p>
+SDK 的授权体系由三个环节构成，缺一不可：
+</p>
+
+<svg class="dg" viewBox="0 0 680 250" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect x="14" y="24" width="188" height="96" rx="8" fill="#fff" stroke="#333" stroke-width="1"/>
+  <text x="108" y="46" font-size="11" font-weight="700" text-anchor="middle" fill="#000">① 本地授权文件</text>
+  <text x="108" y="66" font-size="9.2" text-anchor="middle" fill="#444">.lic / properties</text>
+  <text x="108" y="82" font-size="9.2" text-anchor="middle" fill="#444">与设备绑定的密钥材料</text>
+  <text x="108" y="98" font-size="9.2" text-anchor="middle" fill="#444">缺失则 SDK 直接拒绝初始化</text>
+  <text x="108" y="112" font-size="9.2" text-anchor="middle" fill="#666">（静态校验，本地可读）</text>
+
+  <rect x="246" y="24" width="188" height="96" rx="8" fill="#fff" stroke="#333" stroke-width="1"/>
+  <text x="340" y="46" font-size="11" font-weight="700" text-anchor="middle" fill="#000">② 设备指纹采集</text>
+  <text x="340" y="66" font-size="9.2" text-anchor="middle" fill="#444">IMEI / 手机号 / 定位信息</text>
+  <text x="340" y="82" font-size="9.2" text-anchor="middle" fill="#444">经 _init(String[]) 传入</text>
+  <text x="340" y="98" font-size="9.2" text-anchor="middle" fill="#444">用于唯一标识使用设备</text>
+  <text x="340" y="112" font-size="9.2" text-anchor="middle" fill="#666">（动态采集，涉及个人信息）</text>
+
+  <rect x="478" y="24" width="188" height="96" rx="8" fill="#e8e8e8" stroke="#000" stroke-width="1.4"/>
+  <text x="572" y="46" font-size="11" font-weight="700" text-anchor="middle" fill="#000">③ 服务端校验</text>
+  <text x="572" y="66" font-size="9.2" text-anchor="middle" fill="#333">libcurl 发起网络请求</text>
+  <text x="572" y="82" font-size="9.2" text-anchor="middle" fill="#333">服务端下发 Base64 密文</text>
+  <text x="572" y="98" font-size="9.2" text-anchor="middle" fill="#333">本地解密后得到授权数据</text>
+  <text x="572" y="112" font-size="9.2" text-anchor="middle" fill="#000" font-weight="700">★ 本地无法绕过</text>
+
+  <path d="M202 72L240 72" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#a1)"/>
+  <path d="M434 72L472 72" fill="none" stroke="#333" stroke-width="1.5" marker-end="url(#a1)"/>
+
+  <rect x="14" y="150" width="652" height="82" rx="8" fill="#fafafa" stroke="#333" stroke-width="0.8" stroke-dasharray="4 3"/>
+  <text x="30" y="172" font-size="10.5" font-weight="700" fill="#000">为什么无法绕过</text>
+  <text x="30" y="192" font-size="9.5" fill="#333">· 核心逻辑位于原生库（ARM/x86 机器码）且带完整性自校验，修改难度极高；</text>
+  <text x="30" y="208" font-size="9.5" fill="#333">· 设备指纹由系统 API 实时采集，伪造后仍需服务端认可；</text>
+  <text x="30" y="224" font-size="9.5" fill="#333">· 最终授权数据由服务端签发，本地改造无法获得——这是根本性阻断点。</text>
+</svg>
+<div class="cap">图 2-2　三层授权体系：静态文件 + 设备指纹 + 服务端签发</div>
+
+<div class="note">
+<b>关键判断：</b>第③环节位于服务端，属于国家移民管理局体系的信息系统。
+对其实施绕过或伪造请求，可能构成规避技术保护措施，并可能触及《刑法》第 285 条、第 286 条。
+同时，由于读证标准本身是公开的，绕过 SDK 在技术上也无必要性。
+<b>正确路径是依据公开标准独立实现。</b>
+</div>
+
+
+<!-- ==================== 第 3 章 ==================== -->
+<h1>第 3 章　证件识读的技术原理</h1>
+
+<h2>3.1　eMRTD 体系与 ICAO Doc 9303</h2>
+<p>
+国际民航组织（ICAO）制定的 <b>Doc 9303《机读旅行证件》</b> 是全球电子证件的技术基准。
+中国作为 ICAO 缔约国，所签发的电子护照、电子往来港澳通行证、电子往来台湾通行证
+均遵循该标准。标准分为三个关键部分：
+</p>
+
+<svg class="dg" viewBox="0 0 680 232" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="10" width="652" height="212" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="32" font-size="11.5" font-weight="700" fill="#000">ICAO Doc 9303 —— 三个关键部分</text>
+
+  <rect x="30" y="44" width="200" height="76" rx="7" fill="#fff" stroke="#333" stroke-width="1"/>
+  <text x="130" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="#000">Part 3</text>
+  <text x="130" y="84" font-size="9.5" text-anchor="middle" fill="#333">机读区规格</text>
+  <text x="130" y="100" font-size="9" text-anchor="middle" fill="#555">MRZ 的字符集、字段划分</text>
+  <text x="130" y="113" font-size="9" text-anchor="middle" fill="#555">校验位算法（7-3-1 加权）</text>
+
+  <rect x="240" y="44" width="200" height="76" rx="7" fill="#fff" stroke="#333" stroke-width="1"/>
+  <text x="340" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="#000">Part 10</text>
+  <text x="340" y="84" font-size="9.5" text-anchor="middle" fill="#333">逻辑数据结构 LDS</text>
+  <text x="340" y="100" font-size="9" text-anchor="middle" fill="#555">数据组 DG1~DG16 定义</text>
+  <text x="340" y="113" font-size="9" text-anchor="middle" fill="#555">BER-TLV 编码规则</text>
+
+  <rect x="450" y="44" width="200" height="76" rx="7" fill="#e8e8e8" stroke="#000" stroke-width="1.3"/>
+  <text x="550" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="#000">Part 11</text>
+  <text x="550" y="84" font-size="9.5" text-anchor="middle" fill="#333">非接触芯片安全机制</text>
+  <text x="550" y="100" font-size="9" text-anchor="middle" fill="#555">BAC / PACE 访问控制</text>
+  <text x="550" y="113" font-size="9" text-anchor="middle" fill="#555">安全报文、PA / AA / CA</text>
+
+  <rect x="30" y="134" width="620" height="74" rx="7" fill="#fff" stroke="#333" stroke-width="0.8" stroke-dasharray="4 3"/>
+  <text x="46" y="154" font-size="10" font-weight="700" fill="#000">数据流向</text>
+  <text x="46" y="174" font-size="9.3" fill="#333">Part 3 的 MRZ 文本 → 经 Part 11 的 BAC 派生密钥 → 打开芯片 → 按 Part 10 的 LDS 解析数据组</text>
+  <text x="46" y="192" font-size="9.3" fill="#333">→ 各数据组摘要与 EF.SOD 比对，并用签发国证书验证签名（被动认证）</text>
+  <text x="46" y="205" font-size="9.3" fill="#333">整条链路全部由公开标准定义，任何具备密码学基础与 NFC 开发能力的团队均可独立实现</text>
+</svg>
+<div class="cap">图 3-1　ICAO Doc 9303 的三个关键部分及其数据流向</div>
+
+<h2>3.2　机读区 MRZ 规格</h2>
+<p>
+MRZ 是证件表面按固定格式印刷的等宽字符区域，其作用有二：
+一是供机器快速读取基本信息；二是作为芯片访问控制口令的来源。
+MRZ 有 3 种规格，区别在行数与每行字符数：
+</p>
+<table>
+  <tr><th style="width:22mm">规格</th><th style="width:26mm">尺寸</th><th style="width:40mm">适用证件</th><th>说明</th></tr>
+  <tr><td><b>TD1</b></td><td>3 行 × 30 字符</td><td>身份证件卡、往来港澳/台湾通行证</td><td>卡式证件，MRZ 印在背面</td></tr>
+  <tr><td><b>TD2</b></td><td>2 行 × 36 字符</td><td>部分国家的身份证、签证</td><td>较少见</td></tr>
+  <tr><td><b>TD3</b></td><td>2 行 × 44 字符</td><td>各国电子护照（含中国普通护照）</td><td>最常见的规格</td></tr>
+</table>
+
+<p>以 TD3（护照）为例，两行的字段划分如下：</p>
+
+<svg class="dg" viewBox="0 0 680 236" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="8" width="652" height="220" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">TD3 机读区字段划分（每行 44 字符）</text>
+
+  <text x="30" y="48" font-size="9.3" font-weight="700" fill="#333">第 1 行</text>
+  <rect x="40" y="54" width="13.6" height="30" fill="#dcdcdc" stroke="#333" stroke-width="0.6"/>
+  <text x="46.8" y="73" font-size="8.5" text-anchor="middle" fill="#000">1</text>
+  <rect x="53.6" y="54" width="13.6" height="30" fill="#ececec" stroke="#333" stroke-width="0.6"/>
+  <text x="60.4" y="73" font-size="8.5" text-anchor="middle" fill="#000">2</text>
+  <rect x="67.2" y="54" width="41" height="30" fill="#dcdcdc" stroke="#333" stroke-width="0.6"/>
+  <text x="87.7" y="73" font-size="8.5" text-anchor="middle" fill="#000">3</text>
+  <rect x="108.2" y="54" width="531.8" height="30" fill="#f2f2f2" stroke="#333" stroke-width="0.6"/>
+  <text x="374" y="73" font-size="8.5" text-anchor="middle" fill="#000">4　　姓名（姓 &lt;&lt; 名，以 &lt; 填充）</text>
+  <text x="30" y="100" font-size="8.6" fill="#444">1 证件类型 P　2 类型细分 &lt;　3 签发国 CHN</text>
+
+  <text x="30" y="126" font-size="9.3" font-weight="700" fill="#333">第 2 行</text>
+  <rect x="40" y="132" width="122.7" height="30" fill="#dcdcdc" stroke="#333" stroke-width="0.6"/>
+  <text x="101" y="151" font-size="8.5" text-anchor="middle" fill="#000">5</text>
+  <rect x="162.7" y="132" width="13.6" height="30" fill="#bdbdbd" stroke="#333" stroke-width="0.6"/>
+  <text x="169.5" y="151" font-size="8.5" text-anchor="middle" fill="#000">6</text>
+  <rect x="176.4" y="132" width="41" height="30" fill="#dcdcdc" stroke="#333" stroke-width="0.6"/>
+  <text x="196.9" y="151" font-size="8.5" text-anchor="middle" fill="#000">7</text>
+  <rect x="217.3" y="132" width="81.8" height="30" fill="#dcdcdc" stroke="#333" stroke-width="0.6"/>
+  <text x="258.2" y="151" font-size="8.5" text-anchor="middle" fill="#000">8</text>
+  <rect x="299.1" y="132" width="13.6" height="30" fill="#bdbdbd" stroke="#333" stroke-width="0.6"/>
+  <text x="305.9" y="151" font-size="8.5" text-anchor="middle" fill="#000">9</text>
+  <rect x="312.7" y="132" width="13.6" height="30" fill="#dcdcdc" stroke="#333" stroke-width="0.6"/>
+  <text x="319.5" y="151" font-size="8.5" text-anchor="middle" fill="#000">10</text>
+  <rect x="326.4" y="132" width="81.8" height="30" fill="#dcdcdc" stroke="#333" stroke-width="0.6"/>
+  <text x="367.3" y="151" font-size="8.5" text-anchor="middle" fill="#000">11</text>
+  <rect x="408.2" y="132" width="13.6" height="30" fill="#bdbdbd" stroke="#333" stroke-width="0.6"/>
+  <text x="415" y="151" font-size="8.5" text-anchor="middle" fill="#000">12</text>
+  <rect x="421.8" y="132" width="190.9" height="30" fill="#f2f2f2" stroke="#333" stroke-width="0.6"/>
+  <text x="517.2" y="151" font-size="8.5" text-anchor="middle" fill="#000">13</text>
+  <rect x="612.7" y="132" width="13.6" height="30" fill="#bdbdbd" stroke="#333" stroke-width="0.6"/>
+  <text x="619.5" y="151" font-size="8.5" text-anchor="middle" fill="#000">14</text>
+  <rect x="626.4" y="132" width="13.6" height="30" fill="#9e9e9e" stroke="#333" stroke-width="0.6"/>
+  <text x="633.2" y="151" font-size="8.5" text-anchor="middle" fill="#fff">15</text>
+
+  <text x="30" y="182" font-size="8.6" fill="#444">5 证件号（9）　6 证件号校验位　7 国籍（3）　8 出生日期 YYMMDD（6）　9 出生日期校验位</text>
+  <text x="30" y="196" font-size="8.6" fill="#444">10 性别　11 有效期 YYMMDD（6）　12 有效期校验位　13 个人号码/可选数据（14）</text>
+  <text x="30" y="210" font-size="8.6" fill="#444">14 可选数据校验位　15 复合校验位（对 6~13 与 15 之前所有校验位计算）</text>
+</svg>
+<div class="cap">图 3-2　TD3 机读区的字段布局（数字为字段序号，灰底为校验位）</div>
+
+<h2>3.3　校验位算法</h2>
+<p>
+MRZ 中每个数字字段后都跟一位校验位，算法在 ICAO Doc 9303 Part 3 中定义：
+对字段中每个字符取「字符值」，乘以循环权重 7、3、1，求和后对 10 取模。
+字符值映射规则为：<code>0-9 → 0-9</code>，<code>A-Z → 10-35</code>，<code>&lt; → 0</code>。
+</p>
+
+<svg class="dg" viewBox="0 0 680 210" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="8" width="652" height="194" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">校验位计算示例：以出生日期 800101 为例</text>
+
+  <rect x="40" y="46" width="52" height="34" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="66" y="68" font-size="13" text-anchor="middle" fill="#000">8</text>
+  <rect x="92" y="46" width="52" height="34" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="118" y="68" font-size="13" text-anchor="middle" fill="#000">0</text>
+  <rect x="144" y="46" width="52" height="34" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="170" y="68" font-size="13" text-anchor="middle" fill="#000">0</text>
+  <rect x="196" y="46" width="52" height="34" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="222" y="68" font-size="13" text-anchor="middle" fill="#000">1</text>
+  <rect x="248" y="46" width="52" height="34" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="274" y="68" font-size="13" text-anchor="middle" fill="#000">0</text>
+  <rect x="300" y="46" width="52" height="34" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="326" y="68" font-size="13" text-anchor="middle" fill="#000">1</text>
+
+  <text x="66" y="40" font-size="9" text-anchor="middle" fill="#666">字符</text>
+  <text x="66" y="96" font-size="9.5" text-anchor="middle" fill="#000">8</text>
+  <text x="118" y="96" font-size="9.5" text-anchor="middle" fill="#000">0</text>
+  <text x="170" y="96" font-size="9.5" text-anchor="middle" fill="#000">0</text>
+  <text x="222" y="96" font-size="9.5" text-anchor="middle" fill="#000">1</text>
+  <text x="274" y="96" font-size="9.5" text-anchor="middle" fill="#000">0</text>
+  <text x="326" y="96" font-size="9.5" text-anchor="middle" fill="#000">1</text>
+  <text x="26" y="96" font-size="8.6" fill="#666">字符值</text>
+
+  <text x="66" y="120" font-size="9.5" text-anchor="middle" fill="#000">7</text>
+  <text x="118" y="120" font-size="9.5" text-anchor="middle" fill="#000">3</text>
+  <text x="170" y="120" font-size="9.5" text-anchor="middle" fill="#000">1</text>
+  <text x="222" y="120" font-size="9.5" text-anchor="middle" fill="#000">7</text>
+  <text x="274" y="120" font-size="9.5" text-anchor="middle" fill="#000">3</text>
+  <text x="326" y="120" font-size="9.5" text-anchor="middle" fill="#000">1</text>
+  <text x="26" y="120" font-size="8.6" fill="#666">权重</text>
+
+  <text x="66" y="144" font-size="9.5" text-anchor="middle" fill="#000">56</text>
+  <text x="118" y="144" font-size="9.5" text-anchor="middle" fill="#000">0</text>
+  <text x="170" y="144" font-size="9.5" text-anchor="middle" fill="#000">0</text>
+  <text x="222" y="144" font-size="9.5" text-anchor="middle" fill="#000">7</text>
+  <text x="274" y="144" font-size="9.5" text-anchor="middle" fill="#000">0</text>
+  <text x="326" y="144" font-size="9.5" text-anchor="middle" fill="#000">1</text>
+  <text x="26" y="144" font-size="8.6" fill="#666">乘积</text>
+
+  <rect x="400" y="46" width="252" height="98" rx="7" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
+  <text x="416" y="68" font-size="9.6" fill="#000">求和：56 + 0 + 0 + 7 + 0 + 1 = 64</text>
+  <text x="416" y="88" font-size="9.6" fill="#000">取模：64 mod 10 = 4</text>
+  <text x="416" y="112" font-size="11" font-weight="700" fill="#000">校验位 = 4</text>
+  <text x="416" y="132" font-size="9" fill="#444">验证：MRZ 中该位为「4」→ 通过</text>
+
+  <text x="30" y="176" font-size="9.2" fill="#444">复合校验位：对「证件号 + 校验位 + 出生日期 + 校验位 + 有效期 + 校验位 + 可选数据 + 其校验位」整体再算一次。</text>
+  <text x="30" y="190" font-size="9.2" fill="#444">它把所有字段串成一条链，任一位 OCR 识别错误都会导致复合校验失败——这是纠错的关键依据。</text>
+</svg>
+<div class="cap">图 3-3　7-3-1 加权校验位算法（示例：出生日期 800101 → 校验位 4）</div>
+
+<h2>3.4　芯片文件系统与数据组</h2>
+<p>
+芯片内部是一个简化的文件系统：先选择应用（AID），再选择基本文件（EF），最后读取内容。
+所有数据以 BER-TLV 编码。关键文件如下：
+</p>
+
+<svg class="dg" viewBox="0 0 680 292" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="8" width="652" height="276" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">eMRTD 芯片文件系统与数据组</text>
+
+  <rect x="30" y="40" width="300" height="30" rx="5" fill="#dcdcdc" stroke="#000" stroke-width="1"/>
+  <text x="44" y="60" font-size="10" font-weight="700" fill="#000">应用 AID：A0000002471001</text>
+
+  <rect x="30" y="82" width="300" height="52" rx="5" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="44" y="100" font-size="9.6" font-weight="700" fill="#000">EF.COM</text>
+  <text x="112" y="100" font-size="9" fill="#666">0x011E</text>
+  <text x="44" y="116" font-size="9" fill="#444">能力说明：LDS 版本、已存在的数据组列表</text>
+  <text x="44" y="129" font-size="9" fill="#444">读取它可提前得知芯片内有哪些数据组</text>
+
+  <rect x="30" y="140" width="300" height="44" rx="5" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="44" y="158" font-size="9.6" font-weight="700" fill="#000">EF.SOD</text>
+  <text x="112" y="158" font-size="9" fill="#666">0x011D</text>
+  <text x="44" y="176" font-size="9" fill="#444">CMS SignedData，内含各数据组摘要与 DSC 签名</text>
+
+  <rect x="30" y="190" width="300" height="82" rx="5" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="44" y="208" font-size="9.6" font-weight="700" fill="#000">数据组（Data Groups）</text>
+  <text x="44" y="226" font-size="9" fill="#444">DG1　0x0101　机读区 MRZ 文本</text>
+  <text x="44" y="240" font-size="9" fill="#444">DG2　0x0102　人脸图像（JPEG / JPEG 2000）</text>
+  <text x="44" y="254" font-size="9" fill="#444">DG11 0x010B　附加个人资料（含中文姓名）</text>
+  <text x="44" y="268" font-size="9" fill="#444">DG14 / DG15　安全选项与主动认证公钥</text>
+
+  <rect x="348" y="40" width="304" height="232" rx="7" fill="#fff" stroke="#333" stroke-width="0.8" stroke-dasharray="4 3"/>
+  <text x="364" y="60" font-size="10" font-weight="700" fill="#000">数据组内容速览</text>
+  <text x="364" y="82" font-size="9.2" fill="#333"><tspan font-weight="700">DG1</tspan>　与证件表面 MRZ 完全一致的文本</text>
+  <text x="364" y="96" font-size="9.2" fill="#333">　　　（用于与 OCR 结果交叉比对）</text>
+  <text x="364" y="118" font-size="9.2" fill="#333"><tspan font-weight="700">DG2</tspan>　芯片内的人脸数字照片，分辨率</text>
+  <text x="364" y="132" font-size="9.2" fill="#333">　　　远高于翻拍资料页，是防伪关键</text>
+  <text x="364" y="154" font-size="9.2" fill="#333"><tspan font-weight="700">DG11</tspan>　护照持有人附加资料，中国证件</text>
+  <text x="364" y="168" font-size="9.2" fill="#333">　　　常在此保存中文姓名（标签 0x5F0E）</text>
+  <text x="364" y="190" font-size="9.2" fill="#333"><tspan font-weight="700">DG14</tspan>　安全选项：芯片支持的认证算法</text>
+  <text x="364" y="204" font-size="9.2" fill="#333">　　　（据此判断是否支持 PACE / CA）</text>
+  <text x="364" y="226" font-size="9.2" fill="#333"><tspan font-weight="700">DG15</tspan>　主动认证公钥，用于验证芯片</text>
+  <text x="364" y="240" font-size="9.2" fill="#333">　　　非克隆（本项目未实现 AA 验证）</text>
+  <text x="364" y="262" font-size="9.2" fill="#555">注：不同签发国实际存在的数据组不同</text>
+</svg>
+<div class="cap">图 3-4　芯片文件系统结构与主要数据组</div>
+
+<h2>3.5　安全机制总览</h2>
+<p>ICAO 定义了四类安全机制，分别解决不同层面的信任问题：</p>
+
+<svg class="dg" viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="8" width="652" height="184" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">四类安全机制的分工</text>
+
+  <rect x="30" y="42" width="150" height="132" rx="7" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="105" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="#000">BAC</text>
+  <text x="105" y="80" font-size="8.8" text-anchor="middle" fill="#555">基础访问控制</text>
+  <line x1="44" y1="90" x2="166" y2="90" stroke="#ccc" stroke-width="0.6"/>
+  <text x="105" y="108" font-size="8.8" text-anchor="middle" fill="#333">解决：谁能读</text>
+  <text x="105" y="126" font-size="8.8" text-anchor="middle" fill="#333">口令来源：MRZ</text>
+  <text x="105" y="144" font-size="8.8" text-anchor="middle" fill="#333">算法：3DES 对称</text>
+  <text x="105" y="164" font-size="8.8" text-anchor="middle" fill="#000" font-weight="700">本项目已实现</text>
+
+  <rect x="188" y="42" width="150" height="132" rx="7" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="263" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="#000">PACE</text>
+  <text x="263" y="80" font-size="8.8" text-anchor="middle" fill="#555">口令认证连接建立</text>
+  <line x1="202" y1="90" x2="324" y2="90" stroke="#ccc" stroke-width="0.6"/>
+  <text x="263" y="108" font-size="8.8" text-anchor="middle" fill="#333">解决：谁能读（更强）</text>
+  <text x="263" y="126" font-size="8.8" text-anchor="middle" fill="#333">口令来源：MRZ / CAN</text>
+  <text x="263" y="144" font-size="8.8" text-anchor="middle" fill="#333">算法：ECDH 密钥协商</text>
+  <text x="263" y="164" font-size="8.8" text-anchor="middle" fill="#666">未实现（后续演进）</text>
+
+  <rect x="346" y="42" width="150" height="132" rx="7" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
+  <text x="421" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="#000">PA</text>
+  <text x="421" y="80" font-size="8.8" text-anchor="middle" fill="#555">被动认证</text>
+  <line x1="360" y1="90" x2="482" y2="90" stroke="#bbb" stroke-width="0.6"/>
+  <text x="421" y="108" font-size="8.8" text-anchor="middle" fill="#333">解决：数据是否被改</text>
+  <text x="421" y="126" font-size="8.8" text-anchor="middle" fill="#333">依据：EF.SOD 摘要</text>
+  <text x="421" y="144" font-size="8.8" text-anchor="middle" fill="#333">算法：CMS 签名验签</text>
+  <text x="421" y="164" font-size="8.8" text-anchor="middle" fill="#000" font-weight="700">本项目已实现</text>
+
+  <rect x="504" y="42" width="150" height="132" rx="7" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="579" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="#000">AA / CA</text>
+  <text x="579" y="80" font-size="8.8" text-anchor="middle" fill="#555">主动认证 / 芯片认证</text>
+  <line x1="518" y1="90" x2="640" y2="90" stroke="#ccc" stroke-width="0.6"/>
+  <text x="579" y="108" font-size="8.8" text-anchor="middle" fill="#333">解决：芯片是否克隆</text>
+  <text x="579" y="126" font-size="8.8" text-anchor="middle" fill="#333">依据：芯片私钥挑战应答</text>
+  <text x="579" y="144" font-size="8.8" text-anchor="middle" fill="#333">算法：RSA / ECDSA</text>
+  <text x="579" y="164" font-size="8.8" text-anchor="middle" fill="#666">未实现（后续演进）</text>
+</svg>
+<div class="cap">图 3-5　四类安全机制的分工与本项目实现状态</div>
+
+<!-- ==================== 第 4 章 ==================== -->
+<h1>第 4 章　协议握手过程详解</h1>
+
+<h2>4.1　BAC 握手完整时序</h2>
+<p>
+BAC（Basic Access Control）是整个读证流程的核心。它的设计思想是：
+把证件表面可见的 MRZ 文本当作「口令」，只有能读到证件实体的人才能打开芯片。
+握手过程共 10 步，其中第 4、7、12 步是本地计算，不产生通信：
+</p>
+
+<svg class="dg" viewBox="0 0 680 512" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="10" y="6" width="660" height="500" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="26" y="26" font-size="11" font-weight="700" fill="#000">BAC 双向认证与安全报文建立（时序）</text>
+
+  <rect x="236" y="36" width="120" height="30" rx="5" fill="#dcdcdc" stroke="#000" stroke-width="1"/>
+  <text x="296" y="56" font-size="10" font-weight="700" text-anchor="middle" fill="#000">读卡器 IFD</text>
+  <rect x="520" y="36" width="130" height="30" rx="5" fill="#dcdcdc" stroke="#000" stroke-width="1"/>
+  <text x="585" y="56" font-size="10" font-weight="700" text-anchor="middle" fill="#000">证件芯片 ICC</text>
+  <line x1="296" y1="66" x2="296" y2="488" stroke="#999" stroke-width="0.8" stroke-dasharray="4 4"/>
+  <line x1="585" y1="66" x2="585" y2="488" stroke="#999" stroke-width="0.8" stroke-dasharray="4 4"/>
+
+  <text x="26" y="92" font-size="9" fill="#666">步骤</text>
+  <path d="M296 96L579 96" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="90" font-size="9" text-anchor="middle" fill="#000">① SELECT AID A0000002471001</text>
+
+  <path d="M296 128L579 128" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="122" font-size="9" text-anchor="middle" fill="#000">② GET CHALLENGE（INS 0x84）</text>
+  <path d="M579 160L306 160" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="154" font-size="9" text-anchor="middle" fill="#000">③ 返回 RND.ICC（8 字节随机数）</text>
+
+  <rect x="26" y="176" width="240" height="44" rx="5" fill="#e8e8e8" stroke="#333" stroke-width="0.9" stroke-dasharray="4 3"/>
+  <text x="38" y="194" font-size="9" font-weight="700" fill="#000">④ 本地计算（不通信）</text>
+  <text x="38" y="210" font-size="8.6" fill="#333">MRZi → Kseed → Kenc / Kmac；生成 RND.IFD、K.IFD</text>
+
+  <path d="M296 240L579 240" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="234" font-size="9" text-anchor="middle" fill="#000">⑤ MUTUAL AUTHENTICATE（INS 0x82）</text>
+  <text x="434" y="256" font-size="8.6" text-anchor="middle" fill="#555">携带 E.IFD ‖ M.IFD（加密的密钥材料 + 认证码）</text>
+
+  <path d="M579 276L306 276" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="270" font-size="9" text-anchor="middle" fill="#000">⑥ 返回 E.ICC ‖ M.ICC</text>
+
+  <rect x="26" y="292" width="240" height="44" rx="5" fill="#e8e8e8" stroke="#333" stroke-width="0.9" stroke-dasharray="4 3"/>
+  <text x="38" y="310" font-size="9" font-weight="700" fill="#000">⑦ 本地验证与派生（不通信）</text>
+  <text x="38" y="326" font-size="8.6" fill="#333">解密校验 RND.ICC′ / RND.IFD′；派生会话密钥与 SSC</text>
+
+  <rect x="26" y="346" width="628" height="26" rx="4" fill="#d0d0d0" stroke="#000" stroke-width="0.9"/>
+  <text x="340" y="363" font-size="9.3" font-weight="700" text-anchor="middle" fill="#000">⑧ 会话密钥就绪：KsEnc′ / KsMac′ —— 后续所有通信进入安全报文保护</text>
+
+  <path d="M296 396L579 396" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="390" font-size="9" text-anchor="middle" fill="#000">⑨ SELECT EF（如 EF.COM 0x011E）</text>
+  <path d="M296 428L579 428" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="422" font-size="9" text-anchor="middle" fill="#000">⑩ READ BINARY 分块读取</text>
+  <path d="M579 460L306 460" fill="none" stroke="#222" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="434" y="454" font-size="9" text-anchor="middle" fill="#000">⑪ 加密响应 + DO'99' 状态字 + DO'8E' MAC</text>
+
+  <rect x="26" y="470" width="628" height="24" rx="4" fill="#fff" stroke="#333" stroke-width="0.9" stroke-dasharray="4 3"/>
+  <text x="340" y="486" font-size="9" font-weight="700" text-anchor="middle" fill="#000">⑫ 本地：逐块验 MAC 并解密 → 得到明文数据组 → 被动认证</text>
+</svg>
+<div class="cap">图 4-1　BAC 握手与安全报文建立完整时序（灰底为本地计算，无网络交互）</div>
+
+<div class="note">
+<b>为什么 BAC 能防止随意读取？</b>
+芯片不接受任何未认证的读请求。而 BAC 口令由 MRZ 中的证件号、出生日期、有效期三段拼接而成
+（含各自校验位，共 24 字符），必须物理接触证件才能获得。
+这意味着「拿一个 NFC 读卡器贴近路人的包」无法读取任何数据——
+这既是隐私保护，也是本方案合法性的基础：读取自己或已获授权的证件，是标准赋予的能力。
+</div>
+
+<h2>4.2　密钥派生 KDF</h2>
+<p>
+BAC 的密钥派生有一个广为流传的错误写法：早期很多资料称「用 3DES 加密常量 1 和 2 得到 Kenc 和 Kmac」。
+ICAO Doc 9303 Part 11 的正式定义其实是基于 SHA-1 的 KDF：
+</p>
+
+<svg class="dg" viewBox="0 0 680 262" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="14" y="8" width="652" height="246" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">BAC 密钥派生链路</text>
+
+  <rect x="30" y="42" width="150" height="44" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="105" y="60" font-size="9.6" font-weight="700" text-anchor="middle" fill="#000">MRZ 信息（24 字符）</text>
+  <text x="105" y="76" font-size="8.4" text-anchor="middle" fill="#555">证件号+CD‖生日+CD‖有效期+CD</text>
+
+  <path d="M180 64L214 64" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a3)"/>
+
+  <rect x="218" y="42" width="128" height="44" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="282" y="60" font-size="9.6" font-weight="700" text-anchor="middle" fill="#000">SHA-1 摘要</text>
+  <text x="282" y="76" font-size="8.4" text-anchor="middle" fill="#555">取前 16 字节 = Kseed</text>
+
+  <path d="M346 64L380 64" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a3)"/>
+
+  <rect x="384" y="42" width="128" height="44" rx="6" fill="#dcdcdc" stroke="#000" stroke-width="1"/>
+  <text x="448" y="60" font-size="9.6" font-weight="700" text-anchor="middle" fill="#000">ICAO KDF</text>
+  <text x="448" y="76" font-size="8.4" text-anchor="middle" fill="#333">KDF(K, c)</text>
+
+  <path d="M512 64L546 64" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a3)"/>
+
+  <rect x="550" y="34" width="100" height="26" rx="5" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="600" y="51" font-size="9" text-anchor="middle" fill="#000">c=1 → Kenc</text>
+  <rect x="550" y="68" width="100" height="26" rx="5" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="600" y="85" font-size="9" text-anchor="middle" fill="#000">c=2 → Kmac</text>
+
+  <rect x="30" y="102" width="620" height="46" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
+  <text x="340" y="122" font-size="10.5" font-weight="700" text-anchor="middle" fill="#000">KDF(K, c) = DESParityAdjust( SHA-1( K ‖ c 的 4 字节大端表示 ) [0..15] )</text>
+  <text x="340" y="139" font-size="8.8" text-anchor="middle" fill="#333">摘要后取前 16 字节，再逐字节调整 DES 奇偶位 —— 注意不是「3DES 加密常量」</text>
+
+  <rect x="30" y="158" width="620" height="86" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="46" y="178" font-size="10" font-weight="700" fill="#000">会话密钥派生（BAC 成功后）</text>
+  <text x="46" y="198" font-size="9.2" fill="#333">Kseed′ = K.IFD <tspan font-weight="700">⊕</tspan> K.ICC　（两个随机密钥逐字节异或）</text>
+  <text x="46" y="216" font-size="9.2" fill="#333">KsEnc′ = KDF(Kseed′, 1)　　KsMac′ = KDF(Kseed′, 2)</text>
+  <text x="46" y="234" font-size="9.2" fill="#555">K.IFD 由读卡器随机生成，K.ICC 由芯片随机生成，双方各持一半——单方无法预知会话密钥</text>
+</svg>
+<div class="cap">图 4-2　从 MRZ 文本到会话密钥的完整派生链路</div>
+
+<h2>4.3　安全报文封装与解封</h2>
+<p>
+BAC 成功后，所有命令与响应都必须套上安全报文（Secure Messaging）外壳。
+其本质是：把原始 APDU 的命令头与数据装进若干数据对象（DO），加密后附加 MAC。
+</p>
+
+<svg class="dg" viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="14" y="8" width="652" height="284" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">安全报文结构：命令 APDU</text>
+
+  <rect x="30" y="42" width="620" height="24" rx="4" fill="#dcdcdc" stroke="#000" stroke-width="0.9"/>
+  <text x="340" y="58" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">CLA 0x0C　INS　P1　P2　Lc　［ DO′87′ 密文 ］［ DO′97′ Le ］［ DO′8E′ MAC ］</text>
+
+  <rect x="30" y="76" width="140" height="66" rx="5" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="100" y="96" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">DO′87′ / DO′85′</text>
+  <text x="100" y="113" font-size="8.5" text-anchor="middle" fill="#444">原始命令头 + 数据</text>
+  <text x="100" y="127" font-size="8.5" text-anchor="middle" fill="#444">3DES-CBC 加密</text>
+  <text x="100" y="137" font-size="8.5" text-anchor="middle" fill="#666">INS 为偶数用 87</text>
+
+  <rect x="180" y="76" width="140" height="66" rx="5" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="250" y="96" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">DO′97′</text>
+  <text x="250" y="113" font-size="8.5" text-anchor="middle" fill="#444">期望返回长度</text>
+  <text x="250" y="127" font-size="8.5" text-anchor="middle" fill="#444">固定为 0x01 0x00</text>
+  <text x="250" y="137" font-size="8.5" text-anchor="middle" fill="#666">即 Le = 256</text>
+
+  <rect x="330" y="76" width="140" height="66" rx="5" fill="#e0e0e0" stroke="#000" stroke-width="1"/>
+  <text x="400" y="96" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">DO′8E′</text>
+  <text x="400" y="113" font-size="8.5" text-anchor="middle" fill="#333">完整性认证码 MAC</text>
+  <text x="400" y="127" font-size="8.5" text-anchor="middle" fill="#333">ISO 9797-1 算法 3</text>
+  <text x="400" y="137" font-size="8.5" text-anchor="middle" fill="#555">Retail MAC（8 字节）</text>
+
+  <rect x="480" y="76" width="170" height="66" rx="5" fill="#fff" stroke="#333" stroke-width="0.8" stroke-dasharray="4 3"/>
+  <text x="565" y="96" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">MAC 计算输入</text>
+  <text x="565" y="113" font-size="8.5" text-anchor="middle" fill="#444">SSC ‖ 命令头（CLA=0x0C）</text>
+  <text x="565" y="127" font-size="8.5" text-anchor="middle" fill="#444">‖ DO′87′ ‖ DO′97′</text>
+  <text x="565" y="137" font-size="8.5" text-anchor="middle" fill="#666">命令头必须先做 Padding</text>
+
+  <text x="30" y="166" font-size="11" font-weight="700" fill="#000">安全报文结构：响应 APDU</text>
+  <rect x="30" y="176" width="620" height="24" rx="4" fill="#dcdcdc" stroke="#000" stroke-width="0.9"/>
+  <text x="340" y="192" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">［ DO′87′ 密文 ］ DO′99′ 状态字 DO′8E′ MAC　SW1 SW2</text>
+
+  <rect x="30" y="210" width="620" height="70" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="46" y="230" font-size="9.4" font-weight="700" fill="#000">解封与校验流程</text>
+  <text x="46" y="248" font-size="9" fill="#333">① 校验外层 SW1SW2 必须为 0x9000，且与 DO′99′ 中记录的状态字一致</text>
+  <text x="46" y="264" font-size="9" fill="#333">② 用 KsMac′ 重算 MAC，与 DO′8E′ 比对——不一致说明报文被篡改，立即中止</text>
+  <text x="46" y="276" font-size="9" fill="#333">③ 解密 DO′87′，首字节必须为 0x01（填充指示符），去掉填充即得明文</text>
+</svg>
+<div class="cap">图 4-3　安全报文的封装结构与解封校验流程</div>
+
+<div class="note warn">
+<b>三个最容易踩坑的实现细节：</b><br>
+① <b>ISO 9797-1 Padding Method 2 在数据已对齐时仍会追加一整个块</b>（如 32 字节补到 40 字节），
+这直接影响 <code>M.IFD</code> 的计算结果；<br>
+② <b>命令头必须参与 MAC 计算</b>，且计算前 CLA 要置为 <code>0x0C</code>、并做 Padding；<br>
+③ <b>3DES 模式下 CBC 的初始向量恒为全 0</b>（只有 AES 才需要 <code>IV = K(SSC)</code>）。
+</div>
+
+<h2>4.4　会话计数器 SSC</h2>
+<p>
+SSC 是 8 字节大端计数器，每收发一条命令自增 1，并参与 MAC 计算。
+它的作用是防止重放攻击：即使攻击者截获了一条合法报文，重放时 SSC 已变，MAC 校验必然失败。
+</p>
+
+<svg class="dg" viewBox="0 0 680 216" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="8" width="652" height="200" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">SSC 的构造与演进</text>
+
+  <rect x="30" y="42" width="286" height="46" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="46" y="60" font-size="9.4" font-weight="700" fill="#000">初始值（BAC 完成后确定）</text>
+  <text x="46" y="78" font-size="9.2" fill="#333">SSC = RND.ICC[4..8] ‖ RND.IFD[4..8]</text>
+
+  <rect x="326" y="42" width="324" height="46" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1"/>
+  <text x="342" y="60" font-size="9.4" font-weight="700" fill="#000">取值规则（官方向量示例）</text>
+  <text x="342" y="78" font-size="9.2" fill="#333">RND.ICC = 4608F919 88702212 → 取后 4 字节 88702212</text>
+
+  <rect x="30" y="98" width="620" height="100" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="46" y="118" font-size="9.4" font-weight="700" fill="#000">官方向量中的 SSC 推演</text>
+  <text x="46" y="138" font-size="9.2" fill="#333">RND.ICC = 4608F91988702212　RND.IFD = 781723860C06C226</text>
+  <text x="46" y="156" font-size="9.2" fill="#333">SSC = 88702212 ‖ 0C06C226 = <tspan font-weight="700">887022120C06C226</tspan>　✓ 与 ICAO 官方一致</text>
+  <text x="46" y="176" font-size="9.2" fill="#333">此后每条命令发送前 SSC 自增 1，响应解封时同样自增 1 后参与 MAC 校验</text>
+  <text x="46" y="192" font-size="9" fill="#666">若实现中遗漏自增，第二条命令起 MAC 校验必然失败——这是调试中最常见的故障点</text>
+</svg>
+<div class="cap">图 4-4　SSC 的构造方式与推演过程</div>
+
+<h2>4.5　文件读取的分块策略</h2>
+<p>
+ISO 7816-4 短 APDU 的单次响应上限为 256 字节，而安全报文的密文、状态字与 MAC 都要占用空间。
+因此单次 READ BINARY 的明文长度必须留出余量，本项目取 <b>224 字节</b>：
+</p>
+
+<svg class="dg" viewBox="0 0 680 178" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="8" width="652" height="162" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">单条响应 256 字节的预算分配</text>
+
+  <rect x="30" y="44" width="484" height="40" fill="#dcdcdc" stroke="#000" stroke-width="1"/>
+  <text x="272" y="69" font-size="10" font-weight="700" text-anchor="middle" fill="#000">DO′87′ 密文段　236 字节</text>
+  <rect x="514" y="44" width="16" height="40" fill="#fff" stroke="#000" stroke-width="1"/>
+  <text x="522" y="69" font-size="8" text-anchor="middle" fill="#000">4</text>
+  <rect x="530" y="44" width="30" height="40" fill="#b0b0b0" stroke="#000" stroke-width="1"/>
+  <text x="545" y="69" font-size="8" text-anchor="middle" fill="#000">10</text>
+  <rect x="560" y="44" width="90" height="40" fill="#e8e8e8" stroke="#000" stroke-width="1" stroke-dasharray="3 2"/>
+  <text x="605" y="69" font-size="8.4" text-anchor="middle" fill="#333">余量 6</text>
+
+  <text x="30" y="104" font-size="8.8" fill="#444">DO′87′：3 字节标签长度 + 1 字节填充指示符 + 232 字节填充后密文 = 236</text>
+  <text x="514" y="104" font-size="8.8" fill="#444">DO′99′</text>
+  <text x="530" y="104" font-size="8.8" fill="#444">DO′8E′</text>
+
+  <rect x="30" y="118" width="620" height="42" rx="6" fill="#fff" stroke="#333" stroke-width="0.8"/>
+  <text x="46" y="136" font-size="9.2" fill="#333">明文 224 → 填充后 232（ISO 9797-1 方法 2）→ 加密并封装为 236 字节的 DO′87′</text>
+  <text x="46" y="152" font-size="9.2" fill="#333">合计 236 + 4 + 10 = 250 ≤ 256，留出 6 字节余量以兼容实现差异</text>
+</svg>
+<div class="cap">图 4-5　单次 READ BINARY 的字节预算（明文上限 224 字节）</div>
+
+<h2>4.6　被动认证流程</h2>
+<p>
+被动认证解决「数据是否被篡改」的问题。其思路是：签发国用私钥对各数据组摘要签名，
+读卡器用签发国证书公钥验证签名，并重新计算摘要比对。
+</p>
+
+<svg class="dg" viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="14" y="8" width="652" height="284" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">被动认证的验证链路</text>
+
+  <rect x="30" y="42" width="150" height="50" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="105" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">读取的数据组</text>
+  <text x="105" y="80" font-size="8.6" text-anchor="middle" fill="#555">DG1 / DG2 / DG11 …</text>
+
+  <path d="M180 67L212 67" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a5)"/>
+
+  <rect x="216" y="42" width="150" height="50" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="291" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">本地重算摘要</text>
+  <text x="291" y="80" font-size="8.6" text-anchor="middle" fill="#555">SHA-1 / SHA-256</text>
+
+  <path d="M366 67L398 67" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a5)"/>
+
+  <rect x="402" y="42" width="248" height="50" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1"/>
+  <text x="526" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">与 EF.SOD 中的摘要比对</text>
+  <text x="526" y="80" font-size="8.6" text-anchor="middle" fill="#333">LDS Security Object → DataGroupHash</text>
+
+  <path d="M526 92L526 118" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a5)"/>
+
+  <rect x="30" y="122" width="620" height="72" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="46" y="142" font-size="9.8" font-weight="700" fill="#000">EF.SOD 内部结构（CMS SignedData）</text>
+  <text x="46" y="162" font-size="9" fill="#333">ContentInfo → SignedData → encapContentInfo → eContent → LDSSecurityObject → DataGroupHash[]</text>
+  <text x="46" y="180" font-size="9" fill="#333">signerInfos → 签名值 + signedAttrs（含 messageDigest 属性）+ 签名算法标识</text>
+  <text x="46" y="192" font-size="9" fill="#666">所有结构均为 DER / ASN.1 编码，可用最小化的 DER 解析器逐层拆解</text>
+
+  <path d="M340 194L340 216" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a5)"/>
+
+  <rect x="30" y="220" width="300" height="60" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1"/>
+  <text x="180" y="240" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">① 摘要比对</text>
+  <text x="180" y="258" font-size="8.8" text-anchor="middle" fill="#333">逐个数据组比对摘要值</text>
+  <text x="180" y="272" font-size="8.8" text-anchor="middle" fill="#333">不一致 → 数据被篡改</text>
+
+  <rect x="350" y="220" width="300" height="60" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1"/>
+  <text x="500" y="240" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">② CMS 签名验签</text>
+  <text x="500" y="258" font-size="8.8" text-anchor="middle" fill="#333">用 DSC 证书公钥验证签名</text>
+  <text x="500" y="272" font-size="8.8" text-anchor="middle" fill="#333">DSC 需由 CSCA 签发才可信</text>
+</svg>
+<div class="cap">图 4-6　被动认证：摘要比对 + CMS 签名验证</div>
+
+<div class="note warn">
+<b>信任链的最后一环需要 CSCA 主列表。</b>
+DSC 证书由签发国的 CSCA 签发。要确认「这张 DSC 确实属于中国」，必须持有中国 CSCA 的根证书
+并进行链式验证。本项目未内置各国 CSCA 主列表，因此只能给出
+「数据组摘要一致 + SOD 签名有效」的结论，并在界面中如实标注为
+「未与 CSCA 主列表比对」。这是与官方 SDK 的主要能力差距之一，也是后续可补齐的方向。
+</div>
+<!-- ==================== 第 5 章 ==================== -->
+<h1>第 5 章　本项目的技术方案</h1>
+
+<h2>5.1　总体架构与设计原则</h2>
+<p>
+本项目（EdocReader）以「完全离线、无需任何授权文件」为前提，从零实现了一套完整的证件识读能力。
+设计遵循四条原则：
+</p>
+<ul>
+  <li><b>标准优先</b>——严格按 ICAO Doc 9303 实现，不引入任何非标准约定，保证与其他合规实现互通；</li>
+  <li><b>零授权依赖</b>——不使用任何需要许可文件、设备绑定或联网校验的组件；</li>
+  <li><b>零第三方密码学库</b>——密码学全部使用 JDK / Android 自带的 JCE，减少供应链风险与体积；</li>
+  <li><b>可验证</b>——所有密码学环节都用 ICAO 官方工作样例做逐字节断言，而非「看起来能跑」。</li>
+</ul>
+
+<svg class="dg" viewBox="0 0 680 344" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <rect x="14" y="8" width="652" height="328" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">EdocReader 分层架构</text>
+
+  <rect x="30" y="40" width="620" height="52" rx="7" fill="#dcdcdc" stroke="#000" stroke-width="1"/>
+  <text x="46" y="60" font-size="10" font-weight="700" fill="#000">表现层（ui/）</text>
+  <text x="46" y="78" font-size="9" fill="#333">MainActivity 记录列表　ScanActivity 相机取景　NfcReadActivity 读卡　DetailActivity 详情</text>
+
+  <rect x="30" y="102" width="620" height="52" rx="7" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="46" y="122" font-size="10" font-weight="700" fill="#000">应用服务层</text>
+  <text x="46" y="140" font-size="9" fill="#333">PassportReader（全流程编排）　RecordRepository（存储）　ExportManager（导出）</text>
+
+  <rect x="30" y="164" width="196" height="76" rx="7" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="128" y="184" font-size="9.8" font-weight="700" text-anchor="middle" fill="#000">OCR 模块</text>
+  <text x="128" y="202" font-size="8.6" text-anchor="middle" fill="#444">CameraX 取帧</text>
+  <text x="128" y="216" font-size="8.6" text-anchor="middle" fill="#444">ML Kit 文本识别</text>
+  <text x="128" y="230" font-size="8.6" text-anchor="middle" fill="#444">MRZ 行组提取与纠错</text>
+
+  <rect x="242" y="164" width="196" height="76" rx="7" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="340" y="184" font-size="9.8" font-weight="700" text-anchor="middle" fill="#000">NFC 通信模块</text>
+  <text x="340" y="202" font-size="8.6" text-anchor="middle" fill="#444">IsoDep 通道</text>
+  <text x="340" y="216" font-size="8.6" text-anchor="middle" fill="#444">APDU 编解码</text>
+  <text x="340" y="230" font-size="8.6" text-anchor="middle" fill="#444">BER-TLV 解析</text>
+
+  <rect x="454" y="164" width="196" height="76" rx="7" fill="#e8e8e8" stroke="#000" stroke-width="1.1"/>
+  <text x="552" y="184" font-size="9.8" font-weight="700" text-anchor="middle" fill="#000">安全模块</text>
+  <text x="552" y="202" font-size="8.6" text-anchor="middle" fill="#333">BAC 双向认证</text>
+  <text x="552" y="216" font-size="8.6" text-anchor="middle" fill="#333">3DES 安全报文</text>
+  <text x="552" y="230" font-size="8.6" text-anchor="middle" fill="#333">被动认证 CMS 验签</text>
+
+  <rect x="30" y="256" width="620" height="64" rx="7" fill="#fff" stroke="#333" stroke-width="0.9" stroke-dasharray="4 3"/>
+  <text x="46" y="276" font-size="10" font-weight="700" fill="#000">基础层</text>
+  <text x="46" y="294" font-size="9" fill="#333">DesCrypto（DES/3DES、Retail MAC、ISO 9797-1 填充、ICAO KDF）　Der（DER/ASN.1 解析）　Hex（字节工具）</text>
+  <text x="46" y="310" font-size="9" fill="#333">全部基于 JDK 自带 JCE，无任何第三方密码学依赖；无网络权限，无云端交互</text>
+</svg>
+<div class="cap">图 5-1　EdocReader 的分层架构</div>
+
+<h2>5.2　模块划分与代码结构</h2>
+<table>
+  <tr><th style="width:52mm">模块 / 文件</th><th style="width:20mm">行数量级</th><th>职责</th></tr>
+  <tr><td><code>crypto/DesCrypto.kt</code></td><td>约 200</td><td>DES/3DES 加解密、Retail MAC、ISO 9797-1 方法 2 填充、ICAO KDF、密钥派生</td></tr>
+  <tr><td><code>mrz/MrzInfo.kt</code></td><td>约 140</td><td>MRZ 数据模型、日期换算、证件类型标签、MRZi 口令拼接</td></tr>
+  <tr><td><code>mrz/MrzParser.kt</code></td><td>约 420</td><td>行组提取、TD1/TD2/TD3 字段切分、校验位计算与有限度纠错</td></tr>
+  <tr><td><code>nfc/Tlv.kt</code></td><td>约 130</td><td>BER-TLV 解析与编码，保留原始字节偏移</td></tr>
+  <tr><td><code>nfc/Apdu.kt</code></td><td>约 150</td><td>命令/响应 APDU 编解码、状态字语义、IsoDep 通道封装</td></tr>
+  <tr><td><code>nfc/SecureMessaging.kt</code></td><td>约 180</td><td>安全报文封装与解封、MAC 校验、SSC 维护</td></tr>
+  <tr><td><code>nfc/BacProtocol.kt</code></td><td>约 200</td><td>BAC 十步握手、会话密钥派生</td></tr>
+  <tr><td><code>nfc/EmrtdFileSystem.kt</code></td><td>约 150</td><td>应用与文件选择、长度推算、分块读取</td></tr>
+  <tr><td><code>nfc/dg/DgParsers.kt</code></td><td>约 260</td><td>DG1/DG2/DG11/DG14/DG15 与 EF.COM 解析</td></tr>
+  <tr><td><code>nfc/pa/Der.kt</code></td><td>约 170</td><td>最小 DER/ASN.1 解析器，OID 与算法标识映射</td></tr>
+  <tr><td><code>nfc/pa/PassiveAuth.kt</code></td><td>约 300</td><td>CMS SignedData 解析、证书匹配、摘要比对、签名验签</td></tr>
+  <tr><td><code>nfc/PassportReader.kt</code></td><td>约 260</td><td>全流程编排与错误处理</td></tr>
+  <tr><td><code>ocr/MrzOcrAnalyzer.kt</code></td><td>约 130</td><td>ML Kit 实时帧分析与单帧识别</td></tr>
+  <tr><td><code>data/*.kt</code></td><td>约 600</td><td>记录模型、JSON 文件存储、JSON/CSV/ZIP 导出</td></tr>
+  <tr><td><code>ui/*.kt</code></td><td>约 900</td><td>四个 Activity 与列表适配器</td></tr>
+</table>
+
+<h2>5.3　OCR 识别方案</h2>
+<p>
+OCR 环节的目标不是「识别所有文字」，而是「稳定提取 MRZ 行组并让校验位全部通过」。
+因此方案围绕校验位展开：<b>把校验位当作识别质量的判据</b>。
+</p>
+
+<svg class="dg" viewBox="0 0 680 236" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+  <defs>
+    <marker id="a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="14" y="8" width="652" height="220" rx="10" fill="#fafafa" stroke="#333" stroke-width="1"/>
+  <text x="30" y="28" font-size="11" font-weight="700" fill="#000">MRZ 识别与纠错流程</text>
+
+  <rect x="30" y="42" width="140" height="48" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="100" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">相机取帧</text>
+  <text x="100" y="79" font-size="8.5" text-anchor="middle" fill="#555">CameraX ImageAnalysis</text>
+
+  <path d="M170 66L196 66" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a6)"/>
+
+  <rect x="200" y="42" width="140" height="48" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="270" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">文本识别</text>
+  <text x="270" y="79" font-size="8.5" text-anchor="middle" fill="#555">ML Kit Latin（离线模型）</text>
+
+  <path d="M340 66L366 66" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a6)"/>
+
+  <rect x="370" y="42" width="140" height="48" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="440" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">行组提取</text>
+  <text x="440" y="79" font-size="8.5" text-anchor="middle" fill="#555">按 30/36/44 长度归组</text>
+
+  <path d="M510 66L536 66" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a6)"/>
+
+  <rect x="540" y="42" width="110" height="48" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="1"/>
+  <text x="595" y="62" font-size="9.4" font-weight="700" text-anchor="middle" fill="#000">字段切分</text>
+  <text x="595" y="79" font-size="8.5" text-anchor="middle" fill="#333">按格式定位字段</text>
+
+  <path d="M340 90L340 112" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a6)"/>
+
+  <rect x="30" y="116" width="620" height="46" rx="6" fill="#fff" stroke="#333" stroke-width="0.9"/>
+  <text x="46" y="134" font-size="9.5" font-weight="700" fill="#000">校验位验证 —— 识别质量的客观判据</text>
+  <text x="46" y="152" font-size="9" fill="#333">全部通过 → 判定识别成功，立即回调；未通过 → 进入纠错，仍失败则继续取下一帧</text>
+
+  <path d="M200 162L200 184" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a6)"/>
+  <path d="M480 162L480 184" fill="none" stroke="#222" stroke-width="1.4" marker-end="url(#a6)"/>
+
+  <rect x="30" y="188" width="300" height="32" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="0.9"/>
+  <text x="180" y="202" font-size="9" font-weight="700" text-anchor="middle" fill="#000">字母/数字混淆规范化</text>
+  <text x="180" y="215" font-size="8.4" text-anchor="middle" fill="#333">数字字段中的 O→0、I→1、B→8 等</text>
+
+  <rect x="350" y="188" width="300" height="32" rx="6" fill="#e8e8e8" stroke="#000" stroke-width="0.9"/>
+  <text x="500" y="202" font-size="9" font-weight="700" text-anchor="middle" fill="#000">有限度穷举纠错</text>
+  <text x="500" y="215" font-size="8.4" text-anchor="middle" fill="#333">在限定字符集内改动 1~2 位使校验位成立</text>
+</svg>
+<div class="cap">图 5-2　以校验位为判据的 MRZ 识别与纠错流程</div>
+
+<div class="note">
+<b>为什么这个方案有效？</b>
+MRZ 的校验位设计使得「单字符误识」几乎必然导致校验失败，而「全部校验位通过」
+意味着整体识别正确的概率极高。用校验位做判据，比用「识别置信度」可靠得多——
+置信度高的错误识别依然会让校验位失败，而校验位通过的结果几乎不可能是错的。
+</div>
+
+<h2>5.4　密码学实现与官方验证</h2>
+<p>
+密码学部分是整个工程最容易出错、也最需要严格验证的部分。
+本项目采用的方式是：<b>用 ICAO Doc 9303 Part 11 附录 D 的官方工作样例做逐字节断言</b>。
+官方样例的输入为 <code>MRZ_information = L898902C&lt;369080619406236</code>，验证结果如下：
+</p>
+
+<table>
+  <tr><th style="width:36mm">中间量</th><th>ICAO 官方值</th><th style="width:20mm">本项目</th></tr>
+  <tr><td><code>Kseed</code></td><td><code>239AB9CB282DAF66231DC5A4DF6BFBAE</code></td><td>一致</td></tr>
+  <tr><td><code>Kenc</code></td><td><code>AB94FDECF2674FDFB9B391F85D7F76F2</code></td><td>一致</td></tr>
+  <tr><td><code>Kmac</code></td><td><code>7962D9ECE03D1ACD4C76089DCE131543</code></td><td>一致</td></tr>
+  <tr><td><code>E.IFD</code></td><td><code>72C29C2371CC9BDB65B779B8E8D37B29</code><br><code>ECC154AA56A8799FAE2F498F76ED92F2</code></td><td>一致</td></tr>
+  <tr><td><code>M.IFD</code></td><td><code>5F1448EEA8AD90A7</code></td><td>一致</td></tr>
+  <tr><td><code>K.ICC</code></td><td><code>0B4F80323EB3191CB04970CB4052790B</code></td><td>一致</td></tr>
+  <tr><td><code>KsEnc′</code></td><td><code>979EC13B1CBFE9DCD01AB0FED307EAE5</code></td><td>一致</td></tr>
+  <tr><td><code>KsMac′</code></td><td><code>F1CB1F1FB5ADF208806B89DC579DC1F8</code></td><td>一致</td></tr>
+  <tr><td><code>SSC</code></td><td><code>887022120C06C226</code></td><td>一致</td></tr>
+</table>
+
+<div class="note">
+<b>验证过程中的两个关键修正：</b><br>
+① 最初按「3DES 加密常量 1/2」的流行写法实现 KDF，得到 <code>Kenc = 9C77371C…</code>，
+与官方 <code>AB94FDEC…</code> 不符。改用 ICAO 正式定义的 <code>KDF(K,c) = DESParityAdjust(SHA-1(K‖c)[0..15])</code>
+后逐字节吻合——说明网上大量资料在这一步是有误的。<br>
+② <code>M.IFD</code> 最初直接对 32 字节 <code>E.IFD</code> 做 MAC，得到 <code>AAE3F351…</code>；
+确认 ISO 9797-1 填充方法 2 在数据已对齐时仍追加整块（32→40 字节）后，得到 <code>5F1448EEA8AD90A7</code>，与官方一致。
+</div>
+
+<h2>5.5　本地存储与批量导出</h2>
+<p>
+读取结果以结构化记录形式保存在应用私有目录，不写入外部存储、不申请存储权限。
+导出通过系统文件选择器（SAF）完成，用户明确指定保存位置。
+</p>
+<table>
+  <tr><th style="width:40mm">存储项</th><th>说明</th></tr>
+  <tr><td>记录索引</td><td><code>files/records/index.json</code>，采用「临时文件 + 重命名」方式原子写入；索引损坏时自动重命名备份而非丢弃</td></tr>
+  <tr><td>人脸图像</td><td><code>files/faces/</code>，按记录 ID 命名，与人脸数据组一一对应</td></tr>
+  <tr><td>导出：JSON</td><td>完整结构化数据，含过程日志与被动认证明细</td></tr>
+  <tr><td>导出：CSV</td><td>31 列扁平表，UTF-8 带 BOM，便于 Excel 直接打开</td></tr>
+  <tr><td>导出：ZIP</td><td>records.json + records.csv + faces/ + README.txt，一次性打包全部记录与图像</td></tr>
+</table>
+
+<h2>5.6　与官方 SDK 的能力对比</h2>
+<table>
+  <tr><th style="width:30mm">能力维度</th><th style="width:36mm">官方 SDK</th><th>本项目</th></tr>
+  <tr><td>MRZ 识别</td><td>Tesseract + 证件专用训练集</td><td>ML Kit 文本识别 + 自研行组提取与校验位纠错</td></tr>
+  <tr><td>芯片通道</td><td>手机 NFC / PC-SC 读卡器</td><td>Android IsoDep + Reader Mode</td></tr>
+  <tr><td>访问控制</td><td>BAC（原生实现）</td><td>BAC（自研，已通过官方向量验证）</td></tr>
+  <tr><td>安全报文</td><td>3DES 安全报文</td><td>3DES 安全报文（自研，含完整 MAC 校验）</td></tr>
+  <tr><td>数据解析</td><td>原生实现</td><td>自研 BER-TLV / DG1 / DG2 / DG11 / DG14 / DG15</td></tr>
+  <tr><td>签名验证</td><td>OpenSSL + CSCA 库 + 服务端</td><td>自研 DER/CMS 解析 + Android JCE 验签</td></tr>
+  <tr><td>CSCA 信任链</td><td><b>内置中国 CSCA 库，可判定签发国可信</b></td><td><b>无内置主列表，只能给出摘要一致 + 签名有效</b></td></tr>
+  <tr><td>联网</td><td>必须（授权校验）</td><td>完全不需要</td></tr>
+  <tr><td>授权文件</td><td>必须</td><td>不需要</td></tr>
+  <tr><td>数据出境</td><td>存在与自有服务端交互</td><td>数据不出设备</td></tr>
+  <tr><td>主动认证 / 芯片认证</td><td>支持</td><td>未实现</td></tr>
+  <tr><td>PACE</td><td>支持</td><td>未实现（仅 BAC）</td></tr>
+  <tr><td>代码可控性</td><td>闭源二进制</td><td>完整源码，可审计、可定制、可维护</td></tr>
+</table>
+
+<!-- ==================== 第 6 章 ==================== -->
+<h1>第 6 章　构建、验证与交付</h1>
+
+<h2>6.1　工具链与构建配置</h2>
+<table>
+  <tr><th style="width:44mm">项目</th><th>配置</th></tr>
+  <tr><td>JDK</td><td>JDK 21（编译目标 JVM 17）</td></tr>
+  <tr><td>构建系统</td><td>Gradle 8.7 + Android Gradle Plugin 8.5.2</td></tr>
+  <tr><td>语言</td><td>Kotlin 1.9.24</td></tr>
+  <tr><td>SDK 版本</td><td>compileSdk 34 / targetSdk 34 / minSdk 24</td></tr>
+  <tr><td>ABI</td><td>arm64-v8a、armeabi-v7a</td></tr>
+  <tr><td>关键依赖</td><td>CameraX 1.3.4、ML Kit text-recognition 16.0.1、Material 1.12.0、Gson 2.11.0</td></tr>
+  <tr><td>密码学依赖</td><td><b>无</b>——仅使用 JDK / Android 自带 JCE</td></tr>
+  <tr><td>混淆与压缩</td><td>Release 启用 R8 代码压缩与资源收缩，配套 keep 规则</td></tr>
+</table>
+
+<h2>6.2　单元测试与验证结果</h2>
+<div class="stats">
+  <div class="stat"><span class="v">28</span><span class="k">单元测试总数</span></div>
+  <div class="stat"><span class="v">28</span><span class="k">通过</span></div>
+  <div class="stat"><span class="v">0</span><span class="k">失败</span></div>
+  <div class="stat"><span class="v">9</span><span class="k">ICAO 官方向量断言</span></div>
+</div>
+
+<table>
+  <tr><th style="width:56mm">测试类</th><th style="width:16mm">用例数</th><th>覆盖内容</th></tr>
+  <tr><td><code>DesCryptoTest</code></td><td>9</td><td>KDF 派生、Retail MAC、ISO 9797-1 填充、E.IFD / M.IFD 计算、会话密钥派生、SSC 构造——全部对照 ICAO 官方值</td></tr>
+  <tr><td><code>MrzParserTest</code></td><td>19</td><td>校验位算法、TD3/TD1 解析、MRZi 口令长度、日期换算、证件类型标签、行组提取、字母数字混淆纠错、行长偏差对齐、过期判定</td></tr>
+</table>
+
+<div class="note">
+<b>测试驱动发现的两个问题：</b><br>
+① <code>fullNameEnglish</code> 原先按「名 姓」输出（<code>SAN ZHANG</code>）。
+中国签发证件的惯例是姓在前，已修正为 <code>ZHANG SAN</code>；<br>
+② 一处过期判定用例的期望值写错（把 1999 年当成未过期），修正为使用真正的未来日期。
+这两处都是测试先于实现暴露出来的，说明断言式测试确实有效。
+</div>
+
+<h2>6.3　构建产物</h2>
+<table>
+  <tr><th style="width:52mm">产物</th><th style="width:24mm">体积</th><th>说明</th></tr>
+  <tr><td><code>EdocReader-1.0.0-debug.apk</code></td><td>约 26 MB</td><td>调试版，未混淆，便于排查问题</td></tr>
+  <tr><td><code>EdocReader-1.0.0-release.apk</code></td><td>约 21 MB</td><td>发布版，经 R8 压缩与资源收缩</td></tr>
+  <tr><td>完整源码</td><td>74 个文件</td><td>含 23 个 Kotlin 源文件、资源、测试与文档</td></tr>
+</table>
+<p>
+APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
+由于模型随包分发，应用在无网络环境下也能完整工作——这与「完全离线」的设计目标一致。
+</p>
+
+<!-- ==================== 第 7 章 ==================== -->
+<h1>第 7 章　合规、隐私与结论</h1>
+
+<h2>7.1　法律与合规边界</h2>
+<div class="note warn">
+<b>关于「绕过官方 SDK 授权校验」的明确结论：不可行，也不应尝试。</b><br><br>
+<b>法律层面：</b>SDK 的授权校验（本地授权文件 + 设备指纹 + 服务端签发）属于技术保护措施。
+规避该类措施可能违反《著作权法》第五十三条、《计算机软件保护条例》的相关规定；
+而服务端校验环节位于国家移民管理局体系的信息系统，绕过或伪造请求可能触及
+《刑法》第二百八十五条（非法获取计算机信息系统数据、非法控制计算机信息系统）
+与第二百八十六条（破坏计算机信息系统）。<br><br>
+<b>技术层面：</b>核心逻辑位于原生机器码且带完整性自校验，设备指纹由系统 API 实时采集，
+最终的授权数据由服务端签发——<b>本地改造无法获得服务端认可，这是根本性阻断点</b>。<br><br>
+<b>必要性层面：</b>读证流程完全由公开国际标准定义，不存在必须依赖官方 SDK 的技术环节。
+既然标准是公开的，正确路径就是独立实现，而非破解。
+</div>
+
+<p><b>合法使用的边界：</b></p>
+<ul>
+  <li>仅对<b>本人证件</b>，或<b>已取得持证人明确书面授权</b>的证件使用本应用；</li>
+  <li>遵守《中华人民共和国个人信息保护法》《中华人民共和国出境入境管理法》等法律法规；</li>
+  <li>不得用于伪造、变造证件，不得用于冒用他人身份，不得用于任何形式的身份欺诈；</li>
+  <li>作为用人单位、金融机构等处理他人证件信息时，须具备法定事由并履行告知同意义务。</li>
+</ul>
+
+<h2>7.2　隐私保护设计</h2>
+<p>证件芯片数据包含敏感个人信息与生物特征信息（人脸图像），本项目在工程上做了以下约束：</p>
+<table>
+  <tr><th style="width:44mm">设计点</th><th>实现方式</th></tr>
+  <tr><td>不联网</td><td>未申请 INTERNET 权限，数据无任何出境路径</td></tr>
+  <tr><td>不写外部存储</td><td>数据保存在应用私有目录，其他应用无法访问</td></tr>
+  <tr><td>卸载即清除</td><td>私有目录随应用卸载一并删除</td></tr>
+  <tr><td>排除系统备份</td><td>通过 <code>backup_rules.xml</code> 与 <code>data_extraction_rules.xml</code> 显式排除记录目录与配置，避免证件数据进入云备份或换机迁移</td></tr>
+  <tr><td>导出需用户确认</td><td>通过系统文件选择器由用户指定位置，应用不静默落盘</td></tr>
+  <tr><td>最小权限</td><td>仅申请相机与 NFC 两项功能必需权限</td></tr>
+</table>
+
+<h2>7.3　能力边界与后续演进</h2>
+<p><b>当前能力边界（如实说明）：</b></p>
+<ul>
+  <li>仅实现 <b>BAC</b>。若证件为 <b>PACE-only</b>，则无法读取，应用会明确报错而非静默失败；</li>
+  <li>仅实现<b>被动认证</b>，未实现主动认证（AA）与芯片认证（CA），因此无法判定芯片是否被克隆；</li>
+  <li>未内置各国 CSCA 证书主列表，无法给出「签发国可信」的完整信任链结论；</li>
+  <li>人脸图像支持 JPEG；JPEG 2000 格式可被识别并原样保存，但 Android 原生无法直接显示；</li>
+  <li>往来港澳通行证、往来台湾通行证在<b>格式与协议层面已支持</b>（TD1 三行机读区 + BAC），
+      但尚未经过真机验证，实际可用性取决于证件是否支持 BAC 以及 OCR 识别率。</li>
+</ul>
+
+<p><b>后续演进方向（按性价比排序）：</b></p>
+<table>
+  <tr><th style="width:12mm">优先级</th><th style="width:44mm">方向</th><th>预期收益</th></tr>
+  <tr><td>高</td><td>通行证专用 OCR 预处理</td><td>卡式证件机读区字号小、反光强，需透视校正与二值化预处理提升识别率</td></tr>
+  <tr><td>高</td><td>PACE 支持</td><td>覆盖仅支持 PACE 的新版证件，显著扩大可用范围</td></tr>
+  <tr><td>中</td><td>内置 CSCA 主列表</td><td>补齐信任链最后一环，给出「签发国可信」的结论</td></tr>
+  <tr><td>中</td><td>主动认证 / 芯片认证</td><td>具备克隆芯片检测能力</td></tr>
+  <tr><td>中</td><td>JPEG 2000 解码</td><td>部分证件人脸图像为该格式，解码后可正常显示</td></tr>
+  <tr><td>低</td><td>多帧投票与透视校正</td><td>进一步提升复杂光照下的 OCR 稳定性</td></tr>
+</table>
+
+<h2>7.4　总结</h2>
+<div class="note">
+<b>本报告的核心判断可以归纳为一句话：</b><br><br>
+出入境证件识读能力完全由公开国际标准（ICAO Doc 9303）定义，
+官方 SDK 的价值在于中国证件专用 OCR 模型、CSCA 证书库与服务端查验结论这类<b>工程积累</b>，
+而不在于算法本身的独占性。因此，<b>独立实现是一条可行、合法且已经验证的路径</b>。<br><br>
+本项目用「零授权依赖、零第三方密码学库、完全离线」的方式完成了这条路径：
+BAC 与安全报文已通过 ICAO 官方向量逐字节验证，28 项单元测试全部通过，
+构建出可安装的 Android 应用，源码与 APK 均已交付。<br><br>
+同时必须正视能力边界：缺少 CSCA 主列表与 PACE 支持，
+意味着当前实现尚不能替代官方 SDK 在强监管场景下的地位。
+但在个人自查、自有设备集成、技术研究与教学等场景中，
+它提供了一条不受授权约束、数据不出设备、代码完全可控的技术选择。
+</div>
+
+<div style="margin-top:14mm; padding-top:4mm; border-top:1.5px solid #000; font-size:8.8pt; color:#555;">
+<b style="color:#000;">声明</b><br>
+本报告基于公开发布的软件包目录结构、公开头文件、公开接口文档，以及可执行文件的符号表与导入导出表进行分析，
+不包含对目标软件的反编译、反汇编或源代码还原。报告中涉及的技术分析仅用于学习、研究与技术交流，
+不构成任何形式的合规意见或法律建议。证件识读涉及敏感个人信息与生物特征信息，
+请务必在合法合规、取得明确授权的前提下使用相关技术。
+</div>
+
+</body>
+</html>

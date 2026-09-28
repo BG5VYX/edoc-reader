@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:lineSpacingExtra="3dp"
+        android:text="按证件上印刷的内容逐行输入机读区（MRZ），只需保证证件号、出生日期、有效期三处正确即可完成 BAC 认证。"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+        android:textColor="@color/app_on_surface_variant" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilLine1"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="第 1 行">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etLine1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:inputType="textCapCharacters|textNoSuggestions"
+            android:maxLength="44"
+            android:textSize="13sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilLine2"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:hint="第 2 行">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etLine2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:inputType="textCapCharacters|textNoSuggestions"
+            android:maxLength="44"
+            android:textSize="13sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilLine3"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:hint="第 3 行（通行证等 TD1 证件需要）">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etLine3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:inputType="textCapCharacters|textNoSuggestions"
+            android:maxLength="44"
+            android:textSize="13sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:id="@+id/tvParseResult"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="monospace"
+        android:textSize="11sp"
+        android:textColor="@color/app_on_surface_variant"
+        tools:text="已解析：TD3 · 校验位全部通过" />
+</LinearLayout>

@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">证件识读</string>
+    <string name="title_detail">证件详情</string>
+
+    <!-- 首页 -->
+    <string name="main_empty_title">还没有读取记录</string>
+    <string name="main_empty_hint">点击右下角按钮，先拍照识别证件 MRZ，再贴近手机读取芯片</string>
+    <string name="action_scan">读取新证件</string>
+    <string name="action_export">批量导出</string>
+    <string name="action_delete_all">清空记录</string>
+    <string name="action_about">关于与合规</string>
+
+    <!-- 扫描页 -->
+    <string name="scan_title">对准证件机读区（MRZ）</string>
+    <string name="scan_hint">把护照资料页下方两行、或通行证卡背面的三行字符完整放进取景框</string>
+    <string name="scan_manual">手动输入 MRZ</string>
+    <string name="scan_flash">闪光灯</string>
+    <string name="scan_recognizing">正在识别…</string>
+    <string name="scan_recognized">识别成功</string>
+
+    <!-- 读卡页 -->
+    <string name="nfc_title">读取芯片</string>
+    <string name="nfc_hint">请把手机 NFC 感应区紧贴证件芯片位置，保持不动直到读取完成</string>
+    <string name="nfc_waiting">等待证件…</string>
+    <string name="nfc_reading">正在读取…</string>
+    <string name="nfc_success">读取成功</string>
+    <string name="nfc_failed">读取失败</string>
+    <string name="nfc_no_support">此设备不支持 NFC</string>
+    <string name="nfc_disabled">请在系统设置中开启 NFC</string>
+    <string name="nfc_retry">重新读取</string>
+
+    <!-- 详情 -->
+    <string name="detail_section_basic">证件信息</string>
+    <string name="detail_section_chip">芯片读取</string>
+    <string name="detail_section_dg11">附加资料（DG11）</string>
+    <string name="detail_section_pa">被动认证</string>
+    <string name="detail_section_mrz">原始 MRZ</string>
+    <string name="detail_section_steps">读取过程</string>
+    <string name="detail_export_one">导出本条</string>
+    <string name="detail_delete">删除记录</string>
+
+    <!-- 通用 -->
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="close">关闭</string>
+</resources>

@@ -298,13 +298,54 @@ BAC 口令（MRZi）由这三段拼成：`证件号+校验位 ‖ 出生日期+�
 
 ---
 
+## 权限清单
+
+应用只申请以下权限：
+
+| 权限 | 用途 | 类型 |
+|---|---|---|
+| `android.permission.CAMERA` | 拍摄证件资料页，OCR 识别 MRZ | 危险权限，运行时申请 |
+| `android.permission.NFC` | 读取电子证件芯片 | 普通权限 |
+| `android.permission.ACCESS_NETWORK_STATE` | 无实际用途，来自 ML Kit 的传递依赖 | 普通权限，**只读**，不能传输数据 |
+
+### 关于 INTERNET 权限
+
+**应用显式移除了 `android.permission.INTERNET`。**
+
+ML Kit 的传递依赖 `com.google.android.datatransport:transport-backend-cct`
+（Google 的遥测上报组件）会在清单合并时声明 `INTERNET` 与 `ACCESS_NETWORK_STATE`。
+本应用完全离线，不需要任何网络能力，因此在 `AndroidManifest.xml` 中用
+`tools:node="remove"` 将其移除：
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+```
+
+**移除后的效果**：应用在**系统层面**无法发起任何网络连接。即使某个库尝试上报数据，
+系统也会直接以 `SecurityException` 拒绝——这比「代码里不写网络调用」更可靠，
+因为它不依赖于对每一个依赖库的信任。
+
+可以用 `aapt2 dump badging` 自行验证：
+
+```bash
+aapt2 dump badging apk/EdocReader-1.0.5-release.apk | grep uses-permission
+# 输出中不会出现 android.permission.INTERNET
+```
+
+> 说明：`ACCESS_NETWORK_STATE` 予以保留。它是只读的连通性查询权限，不允许传输任何数据；
+> 移除它可能让遥测调度器在查询网络状态时抛异常。若追求极致，也可以一并移除，
+> 但需要在真机上验证 ML Kit 不因此崩溃。
+
+---
+
 ## 合规与隐私
 
 读取证件芯片涉及**敏感个人信息与生物特征信息**。
 
 * 请仅对**本人证件**或**已取得持证人明确书面授权**的证件使用本应用；
 * 遵守《中华人民共和国个人信息保护法》《中华人民共和国出境入境管理法》等法律法规；
-* 应用不联网、不上传任何数据，读取结果保存在应用私有目录，卸载即清除，
+* 应用**未申请 INTERNET 权限**，在系统层面无法联网、无法上传任何数据，
+  读取结果保存在应用私有目录，卸载即清除，
   且已显式排除在系统备份/迁移之外（见 `res/xml/backup_rules.xml`）；
 * 导出的文件包含完整证件信息与人脸图像，请自行妥善保管、按需删除；
 * 本项目为技术演示，不构成任何形式的合规意见。

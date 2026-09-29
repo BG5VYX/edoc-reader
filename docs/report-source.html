@@ -1511,12 +1511,17 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
 <p>证件芯片数据包含敏感个人信息与生物特征信息（人脸图像），本项目在工程上做了以下约束：</p>
 <table>
   <tr><th style="width:44mm">设计点</th><th>实现方式</th></tr>
-  <tr><td>不联网</td><td>未申请 INTERNET 权限，数据无任何出境路径</td></tr>
+  <tr><td>不联网</td><td><b>显式移除 INTERNET 权限</b>，数据无任何出境路径。
+      ML Kit 的传递依赖 <code>com.google.android.datatransport:transport-backend-cct</code>
+      （Google 遥测上报组件）会在清单合并时声明 INTERNET 与 ACCESS_NETWORK_STATE，
+      本项目用 <code>tools:node="remove"</code> 将其移除，使应用在<b>系统层面</b>无法发起任何网络连接——
+      即使某个库尝试上报，也会被系统以 SecurityException 拒绝</td></tr>
   <tr><td>不写外部存储</td><td>数据保存在应用私有目录，其他应用无法访问</td></tr>
   <tr><td>卸载即清除</td><td>私有目录随应用卸载一并删除</td></tr>
   <tr><td>排除系统备份</td><td>通过 <code>backup_rules.xml</code> 与 <code>data_extraction_rules.xml</code> 显式排除记录目录与配置，避免证件数据进入云备份或换机迁移</td></tr>
   <tr><td>导出需用户确认</td><td>通过系统文件选择器由用户指定位置，应用不静默落盘</td></tr>
-  <tr><td>最小权限</td><td>仅申请相机与 NFC 两项功能必需权限</td></tr>
+  <tr><td>最小权限</td><td>仅申请相机与 NFC 两项功能必需权限；
+      另有一个来自 ML Kit 的 <code>ACCESS_NETWORK_STATE</code>（只读的连通性查询权限，不能传输数据）</td></tr>
 </table>
 
 <h2>7.3　能力边界与后续演进</h2>

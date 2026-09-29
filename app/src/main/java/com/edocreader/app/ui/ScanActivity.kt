@@ -183,10 +183,13 @@ class ScanActivity : AppCompatActivity() {
 
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (b.btnMode.checkedButtonId == R.id.btnModeFields) {
-                    submitThreeElements(b, dialog)
-                } else {
+                // 只有用户**明确选了**「粘贴完整 MRZ」才走 MRZ 分支。
+                // 这样即使单选按钮的初始状态因故未生效（checkedButtonId 返回 NO_ID），
+                // 也会退回到默认的「填三要素」，不会出现「明明只填了三个字段却被要求输 MRZ」。
+                if (b.btnMode.checkedButtonId == R.id.btnModeMrz) {
                     submitMrzLines(b, dialog)
+                } else {
+                    submitThreeElements(b, dialog)
                 }
             }
         }

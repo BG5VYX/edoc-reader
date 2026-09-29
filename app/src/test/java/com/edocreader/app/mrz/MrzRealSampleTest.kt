@@ -3,6 +3,7 @@ package com.edocreader.app.mrz
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -304,5 +305,97 @@ class MrzRealSampleTest {
         val info = MrzParser.parseFromLines(noisy)
         assertNotNull("应能从噪声行中挑出 MRZ", info)
         assertEquals("CA3273201", info!!.documentNumber)
+    }
+
+    // ------------------------------------------------ 三要素直接构造
+
+    @Test
+    fun `三要素构造出的 BAC 口令与真实护照 MRZ 完全一致`() {
+        // 这是三要素模式的核心保证：用户只填三个字段，
+        // 自动算出的校验位必须与证件上印刷的 MRZ 完全一致，否则 BAC 必然失败。
+        val fromRealMrz = MrzParser.parse(listOf(passportLine1, passportLine2))!!
+        val fromFields = MrzParser.fromThreeElements("EF1260892", "850320", "290117")
+
+        assertNotNull("三要素应能构造成功", fromFields)
+        assertEquals(
+            "BAC 口令必须与真实 MRZ 一致",
+            fromRealMrz.mrzInformation, fromFields!!.mrzInformation
+        )
+        assertEquals("EF1260892185032082901178", fromFields.mrzInformation)
+        assertEquals(24, fromFields.mrzInformation.length)
+    }
+
+    @Test
+    fun `三要素构造出的 BAC 口令与真实通行证 MRZ 完全一致`() {
+        val fromRealMrz = MrzParser.parse(listOf(permitLine1, permitLine2, permitLine3))!!
+        val fromFields = MrzParser.fromThreeElements("CA3273201", "810803", "290117")
+
+        assertNotNull(fromFields)
+        assertEquals(
+            "BAC 口令必须与真实 MRZ 一致",
+            fromRealMrz.mrzInformation, fromFields!!.mrzInformation
+        )
+        assertEquals(24, fromFields.mrzInformation.length)
+    }
+
+    @Test
+    fun `三要素模式的校验位由字段自动算出`() {
+        val info = MrzParser.fromThreeElements("EF1260892", "850320", "290117")!!
+        assertEquals('1', info.documentNumberCheckDigit)
+        assertEquals('8', info.dateOfBirthCheckDigit)
+        assertEquals('8', info.dateOfExpiryCheckDigit)
+        assertTrue("自算校验位必然自洽", info.allCheckDigitsValid)
+        assertEquals(MrzFormat.MANUAL, info.format)
+    }
+
+    @Test
+    fun `三要素模式接受 8 位日期并自动取后 6 位`() {
+        val a = MrzParser.fromThreeElements("EF1260892", "850320", "290117")!!
+        val b = MrzParser.fromThreeElements("EF1260892", "19850320", "20290117")!!
+
+        assertEquals("6 位与 8 位输入应得到相同结果", a.mrzInformation, b.mrzInformation)
+        assertEquals("850320", b.dateOfBirth)
+        assertEquals("290117", b.dateOfExpiry)
+    }
+
+    @Test
+    fun `三要素模式自动补足 9 位证件号`() {
+        val info = MrzParser.fromThreeElements("E1234", "850320", "290117")
+        assertNotNull(info)
+        assertEquals(9, info!!.documentNumber.length)
+        assertEquals("E1234<<<<", info.documentNumber)
+    }
+
+    @Test
+    fun `三要素模式容忍空格与大小写`() {
+        val info = MrzParser.fromThreeElements(" ef1260892 ", " 850320 ", " 290117 ")
+        assertNotNull(info)
+        assertEquals("EF1260892", info!!.documentNumber)
+    }
+
+    @Test
+    fun `三要素模式的日期会做合法性检查`() {
+        assertNull("月份 13 非法", MrzParser.fromThreeElements("EF1260892", "851320", "290117"))
+        assertNull("日期 32 非法", MrzParser.fromThreeElements("EF1260892", "850332", "290117"))
+        assertNull("位数不足非法", MrzParser.fromThreeElements("EF1260892", "8503", "290117"))
+        assertNull("含字母非法", MrzParser.fromThreeElements("EF1260892", "85O320", "290117"))
+    }
+
+    @Test
+    fun `三要素模式的证件号会做合法性检查`() {
+        assertNull("空证件号非法", MrzParser.fromThreeElements("", "850320", "290117"))
+        assertNull("超过 9 位非法", MrzParser.fromThreeElements("EF12608921", "850320", "290117"))
+        assertNull("只含符号非法", MrzParser.fromThreeElements("---", "850320", "290117"))
+    }
+
+    @Test
+    fun `三要素模式可被 NfcReadActivity 正确还原`() {
+        // 模拟 NfcReadActivity 的还原路径：拿三个字段重新构造，结果必须一致
+        val original = MrzParser.fromThreeElements("CA3273201", "810803", "290117")!!
+        val restored = MrzParser.fromThreeElements(
+            original.documentNumber, original.dateOfBirth, original.dateOfExpiry
+        )!!
+        assertEquals(original.mrzInformation, restored.mrzInformation)
+        assertEquals("手动输入（未识别证件类型）", restored.documentTypeLabel)
     }
 }

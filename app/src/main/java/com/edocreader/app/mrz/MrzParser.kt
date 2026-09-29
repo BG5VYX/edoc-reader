@@ -149,6 +149,8 @@ object MrzParser {
             MrzFormat.TD3 -> parseTd3(l, notes, repaired)
             MrzFormat.TD2 -> parseTd2(l, notes, repaired)
             MrzFormat.TD1 -> parseTd1(l, notes, repaired)
+            // 手动输入三要素由 fromThreeElements 构造，不经过 MRZ 行解析
+            MrzFormat.MANUAL -> null
         }
     }
 
@@ -501,5 +503,75 @@ object MrzParser {
         val info = parse(lines) ?: return null
         if (requireValidChecksum && !info.allCheckDigitsValid) return null
         return info
+    }
+
+    // ------------------------------------------------------ 三要素直接构造
+
+    /**
+     * 由「证件号 / 出生日期 / 有效期」三要素直接构造 MRZ 信息。
+     *
+     * BAC 口令（MRZi）只需要
+     * `证件号+校验位 ‖ 出生日期+校验位 ‖ 有效期+校验位`，
+     * 而三个校验位都可以由字段本身算出，因此用户**无需输入完整 MRZ**——
+     * 对不便拍摄或 OCR 失败的场景更实用。
+     *
+     * @param docNoRaw  证件号，字母数字混合（如 `EF1260892`、`CA3273201`）
+     * @param dobRaw    出生日期，6 位 `YYMMDD` 或 8 位 `YYYYMMDD`
+     * @param expiryRaw 有效期，同上
+     * @return 解析结果；任一字段不合法时返回 null
+     */
+    fun fromThreeElements(docNoRaw: String, dobRaw: String, expiryRaw: String): MrzInfo? {
+        val docNo = normalizeDocumentNumber(docNoRaw) ?: return null
+        val dob = normalizeMrzDate(dobRaw) ?: return null
+        val expiry = normalizeMrzDate(expiryRaw) ?: return null
+
+        val notes = mutableListOf("手动输入三要素，三个校验位由字段自动计算")
+
+        return MrzInfo(
+            format = MrzFormat.MANUAL,
+            rawLines = listOf(docNo, dob, expiry),
+            documentCode = "",
+            issuingState = "",
+            documentNumber = docNo,
+            documentNumberCheckDigit = checkDigit(docNo),
+            nationality = "",
+            dateOfBirth = dob,
+            dateOfBirthCheckDigit = checkDigit(dob),
+            sex = "",
+            dateOfExpiry = expiry,
+            dateOfExpiryCheckDigit = checkDigit(expiry),
+            personalNumber = "",
+            personalNumberCheckDigit = '<',
+            compositeCheckDigit = '<',
+            surname = "",
+            givenNames = "",
+            optionalData1 = "",
+            optionalData2 = "",
+            allCheckDigitsValid = true,
+            repairedFields = emptyList(),
+            notes = notes
+        )
+    }
+
+    /** 规范化证件号：大写、仅保留 MRZ 字符，不足 9 位右侧补 `<`；超过 9 位或为空则返回 null。 */
+    fun normalizeDocumentNumber(raw: String): String? {
+        val cleaned = raw.uppercase()
+            .filter { it in 'A'..'Z' || it in '0'..'9' || it == '<' }
+        if (cleaned.isEmpty() || cleaned.length > 9) return null
+        return cleaned.padEnd(9, '<')
+    }
+
+    /** 规范化日期：接受 6 位 `YYMMDD` 或 8 位 `YYYYMMDD`，统一返回 6 位；非法则返回 null。 */
+    fun normalizeMrzDate(raw: String): String? {
+        val digits = raw.filter { it.isDigit() }
+        val six = when (digits.length) {
+            6 -> digits
+            8 -> digits.substring(2)
+            else -> return null
+        }
+        val mm = six.substring(2, 4).toIntOrNull() ?: return null
+        val dd = six.substring(4, 6).toIntOrNull() ?: return null
+        if (mm !in 1..12 || dd !in 1..31) return null
+        return six
     }
 }

@@ -11,7 +11,15 @@ enum class MrzFormat(val label: String, val lineLength: Int, val lineCount: Int)
     TD2("TD2（2×36）", 36, 2),
 
     /** 2 行 × 44 字符：护照（含中国电子普通护照）。 */
-    TD3("TD3（2×44）", 44, 2);
+    TD3("TD3（2×44）", 44, 2),
+
+    /**
+     * 用户直接输入「证件号 / 出生日期 / 有效期」三要素，未提供完整 MRZ。
+     *
+     * BAC 口令只需要这三段加各自校验位，而校验位可由字段本身算出，
+     * 因此不需要用户输入整行 MRZ。此格式不会被 [detect] 返回。
+     */
+    MANUAL("手动输入三要素", 0, 0);
 
     companion object {
         fun detect(lines: List<String>): MrzFormat? {
@@ -74,6 +82,7 @@ data class MrzInfo(
 
     val documentTypeLabel: String
         get() = when {
+            format == MrzFormat.MANUAL -> "手动输入（未识别证件类型）"
             documentCode.startsWith("P") -> "护照 / Passport"
             documentCode.startsWith("C") -> "往来港澳通行证"
             documentCode.startsWith("I") -> "身份证件 / ID"

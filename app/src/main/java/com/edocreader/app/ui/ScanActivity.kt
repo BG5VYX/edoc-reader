@@ -164,7 +164,7 @@ class ScanActivity : AppCompatActivity() {
     private fun showManualInput() {
         val b = DialogManualMrzBinding.inflate(layoutInflater)
         val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.scan_manual)
+            .setTitle(R.string.manual_title)
             .setView(b.root)
             .setPositiveButton(R.string.ok, null)
             .setNegativeButton(R.string.cancel, null)

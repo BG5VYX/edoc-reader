@@ -94,7 +94,7 @@ tr:nth-child(even) td { background: #fafafa; }
       <tr><td>分析对象</td><td>国家移民管理局《出入境证件电子信息识读认证软件》Android 版 / Windows 版</td></tr>
       <tr><td>技术基线</td><td>ICAO Doc 9303 Part 3 / Part 10 / Part 11</td></tr>
       <tr><td>配套实现</td><td>EdocReader —— Android 端独立实现（源码 + APK）</td></tr>
-      <tr><td>验证状态</td><td>密码学环节已通过 ICAO 官方工作样例逐字节验证；76 项单元测试全部通过；内置 513 张 CSCA 证书（覆盖 103 个国家/地区）</td></tr>
+      <tr><td>验证状态</td><td>密码学环节已通过 ICAO 官方工作样例逐字节验证；83 项单元测试全部通过；内置 513 张 CSCA 证书（覆盖 103 个国家/地区）</td></tr>
       <tr><td>报告日期</td><td>2026 年 9 月 29 日</td></tr>
     </table>
   </div>
@@ -1446,8 +1446,8 @@ CA 与 PACE 同属一个体系，都依赖 brainpool 曲线族，而 JDK / Andro
 
 <h2>6.2　单元测试与验证结果</h2>
 <div class="stats">
-  <div class="stat"><span class="v">76</span><span class="k">单元测试总数</span></div>
-  <div class="stat"><span class="v">76</span><span class="k">通过</span></div>
+  <div class="stat"><span class="v">83</span><span class="k">单元测试总数</span></div>
+  <div class="stat"><span class="v">83</span><span class="k">通过</span></div>
   <div class="stat"><span class="v">0</span><span class="k">失败</span></div>
   <div class="stat"><span class="v">9</span><span class="k">ICAO 官方向量断言</span></div>
 </div>
@@ -1456,7 +1456,7 @@ CA 与 PACE 同属一个体系，都依赖 brainpool 曲线族，而 JDK / Andro
   <tr><th style="width:50mm">测试类</th><th style="width:14mm">用例数</th><th>覆盖内容</th></tr>
   <tr><td><code>DesCryptoTest</code></td><td>9</td><td>KDF 派生、Retail MAC、ISO 9797-1 填充、E.IFD / M.IFD 计算、会话密钥派生、SSC 构造——全部对照 ICAO 官方值</td></tr>
   <tr><td><code>MrzParserTest</code></td><td>19</td><td>校验位算法、TD3/TD1 解析、MRZi 口令长度、日期换算、证件类型标签、行组提取、字母数字混淆纠错、行长偏差对齐、过期判定</td></tr>
-  <tr><td><code>MrzRealSampleTest</code></td><td>15</td><td>用<b>真实护照与通行证样本</b>断言证件号 9 位、出生日期与有效期各 6 位、全部校验位通过，以及字母数字证件号的纠错不破坏字母</td></tr>
+  <tr><td><code>MrzRealSampleTest</code></td><td>22</td><td>用<b>真实护照与通行证样本</b>断言证件号 9 位、出生日期与有效期各 6 位、全部校验位通过，以及字母数字证件号的纠错不破坏字母</td></tr>
   <tr><td><code>TlvTest</code></td><td>8</td><td>BER-TLV 解析、<code>rawStart</code>/<code>rawLength</code> 语义（含多层嵌套）、长形式长度、多字节 tag、边界与截断数据</td></tr>
   <tr><td><code>ActiveAuthTest</code></td><td>14</td><td>挑战值随机性、RSA/EC 验签往返、篡改挑战值必须失败、<b>克隆芯片的错配公钥必须被识破</b>、签名截断、DG15 公钥解析与端到端验签</td></tr>
   <tr><td><code>CscaTrustStoreTest</code></td><td>11</td><td>用<b>真实 CSCA 证书</b>断言：信任库解析与规模、覆盖国家数、自签名根可通过验证、剔除签发者后链断裂、空库返回失败、同主体多张证书逐张试签</td></tr>
@@ -1552,7 +1552,7 @@ APK 体积主要来自 ML Kit 的离线 OCR 模型（约 20 MB 级别）。
 官方 SDK 的价值在于中国证件专用 OCR 模型、CSCA 证书库与服务端查验结论这类<b>工程积累</b>，
 而不在于算法本身的独占性。因此，<b>独立实现是一条可行、合法且已经验证的路径</b>。<br><br>
 本项目用「零授权依赖、零第三方密码学库、完全离线」的方式完成了这条路径：
-BAC 与安全报文已通过 ICAO 官方向量逐字节验证，76 项单元测试全部通过，
+BAC 与安全报文已通过 ICAO 官方向量逐字节验证，83 项单元测试全部通过，
 并内置了覆盖 103 个国家/地区的 CSCA 信任库，完成从数据完整性到签发国可信的完整验证链路；
 同时实现主动认证，具备芯片克隆检测能力。源码与 APK 均已交付。<br><br>
 同时必须正视能力边界：缺少 PACE 支持、缺少证书吊销列表，

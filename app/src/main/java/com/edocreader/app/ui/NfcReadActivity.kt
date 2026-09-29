@@ -53,8 +53,17 @@ class NfcReadActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
 
-        val lines = intent.getStringArrayExtra(EXTRA_MRZ_LINES)?.toList().orEmpty()
-        mrz = MrzParser.parseFromLines(lines)
+        // 两种来源：完整 MRZ 行组，或手动输入的三要素
+        val docNo = intent.getStringExtra(EXTRA_DOC_NO)
+        mrz = if (!docNo.isNullOrBlank()) {
+            MrzParser.fromThreeElements(
+                docNo,
+                intent.getStringExtra(EXTRA_DOB).orEmpty(),
+                intent.getStringExtra(EXTRA_EXPIRY).orEmpty()
+            )
+        } else {
+            MrzParser.parseFromLines(intent.getStringArrayExtra(EXTRA_MRZ_LINES)?.toList().orEmpty())
+        }
         if (mrz == null) {
             Toast.makeText(this, "MRZ 数据无效，请重新识别", Toast.LENGTH_LONG).show()
             finish()
@@ -206,5 +215,11 @@ class NfcReadActivity : AppCompatActivity() {
         const val EXTRA_MRZ_LINES = "extra_mrz_lines"
         const val EXTRA_SOURCE = "extra_source"
         const val SOURCE_OCR = "ocr"
+
+        /** 手动输入三要素时使用的附加数据（替代完整 MRZ）。 */
+        const val EXTRA_DOC_NO = "extra_doc_no"
+        const val EXTRA_DOB = "extra_dob"
+        const val EXTRA_EXPIRY = "extra_expiry"
+        const val SOURCE_MANUAL_FIELDS = "manual_fields"
     }
 }

@@ -13,7 +13,9 @@
     <!-- 扫描页 -->
     <string name="scan_title">对准证件机读区（MRZ）</string>
     <string name="scan_hint">把护照资料页下方两行、或通行证卡背面的三行字符完整放进取景框</string>
-    <string name="scan_manual">手动输入 MRZ</string>
+    <string name="scan_manual">手动输入</string>
+    <!-- 对话框标题：强调只需填三要素，避免用户误以为必须输入完整机读区 -->
+    <string name="manual_title">手动输入证件信息</string>
     <string name="scan_flash">闪光灯</string>
     <string name="scan_recognizing">正在识别…</string>
     <string name="scan_recognized">识别成功</string>

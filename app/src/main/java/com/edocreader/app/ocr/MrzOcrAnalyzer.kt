@@ -1,6 +1,5 @@
 package com.edocreader.app.ocr
 
-import android.annotation.SuppressLint
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -83,29 +82,7 @@ class MrzOcrAnalyzer(
         runCatching { recognizer.close() }
     }
 
-    @SuppressLint("UnsafeOptInUsageError")
-    fun dummy() = Unit
-
     companion object {
         private const val TAG = "MrzOcrAnalyzer"
-    }
-}
-
-/** 对单张静态图片（相册选图 / 拍照）做 MRZ 识别。 */
-object MrzOcrSingleShot {
-
-    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-
-    fun recognize(
-        bitmap: android.graphics.Bitmap,
-        onResult: (MrzInfo?) -> Unit
-    ) {
-        val input = InputImage.fromBitmap(bitmap, 0)
-        recognizer.process(input)
-            .addOnSuccessListener { text ->
-                val lines = text.textBlocks.flatMap { it.lines }.map { it.text }
-                onResult(MrzParser.parseFromLines(lines))
-            }
-            .addOnFailureListener { onResult(null) }
     }
 }

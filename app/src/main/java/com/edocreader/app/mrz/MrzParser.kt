@@ -44,13 +44,44 @@ object MrzParser {
     // ------------------------------------------------------------ 行组整理
 
     /**
+     * 把各种形态的输入展开成「每行一条」的候选行。
+     *
+     * 需要处理三种现实情形：
+     *   1. 正常的逐行输入；
+     *   2. 用户把整段 MRZ 粘进一个输入框（文本里含换行符）；
+     *   3. OCR 把多行 MRZ 识别成一整行（没有换行符，但总长度恰好是某格式长度的整数倍，
+     *      如护照 2×44 = 88、通行证 3×30 = 90、TD2 2×36 = 72）。
+     */
+    private fun expandInput(candidateLines: List<String>): List<String> {
+        val out = mutableListOf<String>()
+        for (line in candidateLines) {
+            if (line.any { it == '\n' || it == '\r' }) {
+                out.addAll(line.split('\n', '\r').filter { it.isNotBlank() })
+            } else if (line.isNotBlank()) {
+                out.add(line)
+            }
+        }
+
+        // 整段没有换行：若长度恰好是某格式长度的整数倍，按该长度切开
+        if (out.size == 1) {
+            val compact = out[0].replace(" ", "")
+            for (len in intArrayOf(44, 30, 36)) {
+                if (compact.length >= len * 2 && compact.length % len == 0) {
+                    return compact.chunked(len)
+                }
+            }
+        }
+        return out
+    }
+
+    /**
      * 从 OCR 输出的一组文本行中，找出最像 MRZ 的连续行组。
      *
      * ML Kit 返回的是逐行文本，MRZ 通常位于证件资料页底部，且由 2~3 行等长、
      * 只含 [A-Z0-9<] 的字符串构成。
      */
     fun extractMrzLines(candidateLines: List<String>): List<String>? {
-        val normalized = candidateLines
+        val normalized = expandInput(candidateLines)
             .map { sanitizeLine(it) }
             .filter { it.length >= 28 }
 
@@ -81,7 +112,10 @@ object MrzParser {
     /** 去掉空白与常见噪声字符，统一大写，把 OCR 常见的伪字符映射回 MRZ 字符集。 */
     fun sanitizeLine(line: String): String {
         val sb = StringBuilder()
-        for (raw in line.uppercase()) {
+        // 先去掉首尾空白：空格在本函数中会被映射成填充符 `<`，
+        // 粘贴时多出的一个空格会让行长度多 1 位，导致格式检测直接失败。
+        // 若确实是被 OCR 漏掉的 `<`，后续的容差对齐会再补回来。
+        for (raw in line.trim().uppercase()) {
             when {
                 raw in 'A'..'Z' || raw in '0'..'9' || raw == '<' -> sb.append(raw)
                 // OCR 常见的标点/符号误识别

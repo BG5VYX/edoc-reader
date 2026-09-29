@@ -229,4 +229,80 @@ class MrzRealSampleTest {
         val info = MrzParser.parse(listOf(td3Line1, td3Line2(docNo)))!!
         assertEquals("全字母证件号应原样保留", docNo, info.documentNumber)
     }
+
+    // ------------------------------------------------ 输入形态的容错
+
+    @Test
+    fun `首尾多余空格不应导致解析失败`() {
+        // 空格会被 sanitizeLine 映射成填充符 `<`，若不去掉首尾空白，
+        // 行长度会多出 1 位（30 → 31），格式检测直接失败。
+        val padded = listOf(
+            "  $permitLine1  ",
+            "\t$permitLine2",
+            "$permitLine3 "
+        )
+        val info = MrzParser.parseFromLines(padded)
+        assertNotNull("首尾空格不应影响解析", info)
+        assertEquals("CA3273201", info!!.documentNumber)
+        assertEquals(9, info.documentNumber.length)
+    }
+
+    @Test
+    fun `整段粘贴含换行符时应能自动拆行`() {
+        val pasted = "$permitLine1\n$permitLine2\n$permitLine3"
+        val info = MrzParser.parseFromLines(listOf(pasted))
+        assertNotNull("整段粘贴应能自动拆行", info)
+        assertEquals(MrzFormat.TD1, info!!.format)
+        assertEquals("CA3273201", info.documentNumber)
+        assertEquals("810803", info.dateOfBirth)
+        assertEquals("290117", info.dateOfExpiry)
+    }
+
+    @Test
+    fun `护照整段粘贴含换行符时应能自动拆行`() {
+        val pasted = "$passportLine1\n$passportLine2"
+        val info = MrzParser.parseFromLines(listOf(pasted))
+        assertNotNull(info)
+        assertEquals(MrzFormat.TD3, info!!.format)
+        assertEquals("EF1260892", info.documentNumber)
+    }
+
+    @Test
+    fun `OCR 把两行护照识别成一整行时应能按 44 切开`() {
+        val merged = passportLine1 + passportLine2 // 88 字符
+        assertEquals(88, merged.length)
+
+        val info = MrzParser.parseFromLines(listOf(merged))
+        assertNotNull("88 字符应能按 2×44 拆开", info)
+        assertEquals(MrzFormat.TD3, info!!.format)
+        assertEquals("EF1260892", info.documentNumber)
+        assertEquals("850320", info.dateOfBirth)
+    }
+
+    @Test
+    fun `OCR 把三行通行证识别成一整行时应能按 30 切开`() {
+        val merged = permitLine1 + permitLine2 + permitLine3 // 90 字符
+        assertEquals(90, merged.length)
+
+        val info = MrzParser.parseFromLines(listOf(merged))
+        assertNotNull("90 字符应能按 3×30 拆开", info)
+        assertEquals(MrzFormat.TD1, info!!.format)
+        assertEquals("CA3273201", info.documentNumber)
+        assertEquals("810803", info.dateOfBirth)
+    }
+
+    @Test
+    fun `单行 44 字符不应被误拆`() {
+        // 44 恰好是 TD3 行长，但只有一行，不应被当成 2×44 拆开
+        val lines = MrzParser.extractMrzLines(listOf(passportLine1))
+        assertTrue("单行 44 字符不应被拆分", lines == null || lines.size < 2)
+    }
+
+    @Test
+    fun `空白行与噪声行应被忽略`() {
+        val noisy = listOf("", "   ", "###", permitLine1, permitLine2, permitLine3, "END")
+        val info = MrzParser.parseFromLines(noisy)
+        assertNotNull("应能从噪声行中挑出 MRZ", info)
+        assertEquals("CA3273201", info!!.documentNumber)
+    }
 }

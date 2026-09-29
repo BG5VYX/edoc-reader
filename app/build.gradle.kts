@@ -11,8 +11,8 @@ android {
         applicationId = "com.edocreader.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         // 只保留 64 位与 32 位 ARM，桌面/模拟器可另加 x86_64
         ndk {

@@ -34,6 +34,13 @@ object MrzParser {
         return ('0' + (sum % 10))
     }
 
+    /**
+     * MRZ 允许出现的全部字符（ICAO 9303-3）：
+     * 数字、大写字母与填充符 `<`，共 37 个。
+     * 证件号、个人编号等**字母数字混合字段**的纠错必须在此全集内进行。
+     */
+    private const val MRZ_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<"
+
     // ------------------------------------------------------------ 行组整理
 
     /**
@@ -134,11 +141,11 @@ object MrzParser {
         val personalCd = line2[42]
         val compositeCd = line2[43]
 
-        val docNo = repairNumericField("证件号码", docNoRaw, docNoCd, repaired, notes)
+        val docNo = repairAlphaNumericField("证件号码", docNoRaw, docNoCd, repaired, notes)
         val dob = repairNumericField("出生日期", dobRaw, dobCd, repaired, notes)
         val doe = repairNumericField("有效期", doeRaw, doeCd, repaired, notes)
         val personal = if (personalRaw.all { it == '<' }) personalRaw
-        else repairNumericField("个人编号", personalRaw, personalCd, repaired, notes)
+        else repairAlphaNumericField("个人编号", personalRaw, personalCd, repaired, notes)
 
         val expectedComposite = checkDigit(docNo + docNoCd + dob + dobCd + doe + doeCd + personal + personalCd)
         val compositeOk = expectedComposite == compositeCd
@@ -199,7 +206,7 @@ object MrzParser {
 
         val (surname, given) = splitNames(names)
 
-        val docNo = repairNumericField("证件号码", docNoRaw, docNoCd, repaired, notes)
+        val docNo = repairAlphaNumericField("证件号码", docNoRaw, docNoCd, repaired, notes)
         val dob = repairNumericField("出生日期", dobRaw, dobCd, repaired, notes)
         val doe = repairNumericField("有效期", doeRaw, doeCd, repaired, notes)
 
@@ -260,7 +267,7 @@ object MrzParser {
 
         val (surname, given) = splitNames(line3)
 
-        val docNo = repairNumericField("证件号码", docNoRaw, docNoCd, repaired, notes)
+        val docNo = repairAlphaNumericField("证件号码", docNoRaw, docNoCd, repaired, notes)
         val dob = repairNumericField("出生日期", dobRaw, dobCd, repaired, notes)
         val doe = repairNumericField("有效期", doeRaw, doeCd, repaired, notes)
 
@@ -356,6 +363,44 @@ object MrzParser {
 
         notes.add("$label：校验位纠错失败，保留原值（$raw）")
         return normalized
+    }
+
+    /**
+     * 字母数字混合字段（证件号、个人编号）的纠错。
+     *
+     * 证件号**不是纯数字**：中国护照号形如 `EF1260892`，往来港澳通行证号形如 `CA3273201`，
+     * 都含字母。因此必须：
+     *   1. 在包含字母的**完整 MRZ 字符集**内做纠错，否则字母位永远无法被修正；
+     *   2. 绝不套用「字母→数字」规范化，否则 `EF1260892` 会被破坏成 `8F1260892`，
+     *      进而导致 BAC 口令错误、读卡失败；
+     *   3. 纠错失败时保留原值，宁可交由上层判断，也不要静默篡改。
+     */
+    private fun repairAlphaNumericField(
+        label: String,
+        raw: String,
+        checkDigit: Char,
+        repaired: MutableList<String>,
+        notes: MutableList<String>
+    ): String {
+        if (raw.all { it == '<' }) return raw
+        if (isCheckDigitValid(raw, checkDigit)) return raw
+
+        val single = bruteForce(raw, checkDigit, MRZ_ALPHABET, maxChanges = 1)
+        if (single != null) {
+            repaired.add("$label：单字符纠错（$raw → $single）")
+            return single
+        }
+
+        if (raw.length <= 15) {
+            val double = bruteForce(raw, checkDigit, MRZ_ALPHABET, maxChanges = 2)
+            if (double != null) {
+                repaired.add("$label：双字符纠错（$raw → $double）")
+                return double
+            }
+        }
+
+        notes.add("$label：校验位纠错失败，保留原值（$raw）")
+        return raw
     }
 
     private fun letterToDigit(c: Char): Char = when (c) {

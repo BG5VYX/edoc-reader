@@ -171,7 +171,17 @@ class ScanActivity : AppCompatActivity() {
 
                 val info = MrzParser.parseFromLines(lines)
                 if (info == null) {
-                    dialogBinding.tvParseResult.text = "无法解析：请检查行数与每行字符数（护照 2×44，通行证 3×30）"
+                    // 把实际检测到的行长度打出来，便于定位是行数不对还是每行位数不对
+                    val detected = lines.joinToString("、") { "${it.length} 字符" }
+                    dialogBinding.tvParseResult.text = buildString {
+                        append("无法解析。\n")
+                        append("实际输入：${lines.size} 行（$detected）\n")
+                        append("各格式要求：\n")
+                        append("· 护照 TD3 —— 2 行 × 44 字符\n")
+                        append("· 往来港澳 / 往来台湾通行证 TD1 —— 3 行 × 30 字符\n")
+                        append("· 其他证件卡 TD2 —— 2 行 × 36 字符\n")
+                        append("三种格式的证件号均为 9 位、出生日期与有效期均为 6 位。")
+                    }
                     return@setOnClickListener
                 }
 

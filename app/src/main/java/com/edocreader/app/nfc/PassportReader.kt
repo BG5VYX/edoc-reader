@@ -255,6 +255,12 @@ class PassportReader(
     /** 把芯片 DG1 中的 MRZ 文本切成行组后解析。 */
     private fun parseChipMrz(mrzText: String): MrzInfo? {
         val clean = mrzText.replace("\r", "").replace("\n", "")
+
+        // 中国签发的往来港澳/台湾通行证在 DG1 中使用专用字段布局，
+        // 先按该布局尝试；只有全部校验位（含复合校验位）都通过才会采用，
+        // 因此不会误判普通 TD1 证件。
+        MrzParser.parseChinesePermitMrz(clean)?.let { return it }
+
         val candidates = when {
             clean.length == 88 -> listOf(clean.substring(0, 44), clean.substring(44, 88))
             clean.length == 90 -> listOf(clean.substring(0, 30), clean.substring(30, 60), clean.substring(60, 90))

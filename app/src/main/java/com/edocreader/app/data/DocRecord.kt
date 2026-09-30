@@ -1,7 +1,9 @@
 package com.edocreader.app.data
 
 import com.edocreader.app.mrz.MrzInfo
+import com.edocreader.app.mrz.MrzParser
 import com.edocreader.app.nfc.PassportReader
+import com.edocreader.app.nfc.dg.DgParsers
 import com.edocreader.app.nfc.pa.PassiveAuth
 import com.edocreader.app.util.Hex
 import java.text.SimpleDateFormat
@@ -25,6 +27,8 @@ data class DocRecord(
     val issuingState: String = "",
     val documentNumber: String = "",
     val personalNumber: String = "",
+    /** 公民身份号码（18 位，来自 DG11 0x5F10；中国证件专用）。 */
+    val idNumber: String = "",
     val fullName: String = "",
     val nativeName: String = "",
     val surname: String = "",
@@ -121,17 +125,35 @@ data class DocRecord(
             val mrz = result.chipMrz ?: result.ocrMrz
             val pa = result.passiveAuth
 
+            // 中国签发的通行证把英文姓名与公民身份号码放在 DG11 中，
+            // 且 MRZ 里没有独立性别字段——这里用 DG11 补全。
+            val dg11Name = DgParsers.extractEnglishName(result.dg11Items)
+            val dg11Id = DgParsers.extractIdNumber(result.dg11Items)
+            val (nameSurname, nameGiven) = if (dg11Name != null) {
+                MrzParser.splitNames(dg11Name)
+            } else {
+                mrz.surname to mrz.givenNames
+            }
+            val fullName = if (dg11Name != null) {
+                listOf(nameSurname, nameGiven).filter { it.isNotBlank() }.joinToString(" ")
+            } else {
+                mrz.fullNameEnglish
+            }
+            val gender = mrz.genderLabel.takeIf { mrz.sex.isNotBlank() }
+                ?: DgParsers.genderFromIdNumber(dg11Id).orEmpty()
+
             return DocRecord(
                 certName = certName,
                 documentCode = mrz.documentCode,
                 issuingState = mrz.issuingState,
                 documentNumber = mrz.documentNumber,
                 personalNumber = mrz.personalNumber,
-                fullName = mrz.fullNameEnglish,
+                idNumber = dg11Id.orEmpty(),
+                fullName = fullName,
                 nativeName = result.nativeName.orEmpty(),
-                surname = mrz.surname,
-                givenNames = mrz.givenNames,
-                gender = mrz.genderLabel,
+                surname = nameSurname,
+                givenNames = nameGiven,
+                gender = gender,
                 nationality = mrz.nationality,
                 dateOfBirth = mrz.birthDateIso,
                 dateOfExpiry = mrz.expiryDateIso,

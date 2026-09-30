@@ -505,6 +505,84 @@ object MrzParser {
         return info
     }
 
+    // ------------------------------------------------------ 中国通行证专用布局
+
+    /**
+     * 解析中国签发的**往来港澳通行证 / 往来台湾通行证**的芯片 MRZ。
+     *
+     * 这两类证件是 TD1 尺寸的卡片，但 DG1 里的字段布局**不是标准 TD1**：
+     * 证件号在第 1 行，有效期反而排在出生日期**之前**。实测两本真实证件的
+     * 全部校验位（含复合校验位）都能对上，布局如下（位置为 1 起算）：
+     *
+     * ```
+     * 第 1 行：证件类型码(1-2) 证件号码(3-11) 校验位(12) 填充(13)
+     *          有效期(14-19) 校验位(20) 填充(21)
+     *          出生日期(22-27) 校验位(28) 填充(29) 复合校验位(30)
+     * 第 2 行：12 字符附加信息 + 英文姓名（MRZ 格式，如 ZHENGJIAN<<YANGBEN）
+     * 第 3 行：10 字符附加信息 + 填充
+     * ```
+     *
+     * 复合校验位覆盖 `证件号+校验位 ‖ 有效期+校验位 ‖ 出生日期+校验位`。
+     *
+     * **只有当所有校验位都通过时才认定为此布局**，否则返回 null 交回标准 TD1 解析，
+     * 避免把普通 TD1 证件误判。
+     */
+    fun parseChinesePermitMrz(clean: String): MrzInfo? {
+        if (clean.length != 90) return null
+        val l1 = clean.substring(0, 30)
+        val l2 = clean.substring(30, 60)
+
+        // 三个分隔位必须是填充符
+        if (l1[12] != '<' || l1[20] != '<' || l1[28] != '<') return null
+
+        val docNo = l1.substring(2, 11)
+        val docNoCd = l1[11]
+        val doe = l1.substring(13, 19)
+        val doeCd = l1[19]
+        val dob = l1.substring(21, 27)
+        val dobCd = l1[27]
+        val compositeCd = l1[29]
+
+        // 校验位全部通过才采用此布局
+        if (!isCheckDigitValid(docNo, docNoCd)) return null
+        if (!isCheckDigitValid(dob, dobCd)) return null
+        if (!isCheckDigitValid(doe, doeCd)) return null
+        val expectedComposite = checkDigit(docNo + docNoCd + doe + doeCd + dob + dobCd)
+        if (expectedComposite != compositeCd) return null
+
+        // 第 2 行偏移 12 之后是英文姓名
+        val nameField = l2.substring(12).trimEnd('<')
+        val (surname, given) = splitNames(nameField)
+
+        val notes = mutableListOf<String>()
+        notes.add("按中国通行证专用布局解析（有效期在出生日期之前）")
+
+        return MrzInfo(
+            format = MrzFormat.TD1,
+            rawLines = listOf(l1, l2, clean.substring(60, 90)),
+            documentCode = l1.substring(0, 2),
+            issuingState = "CHN",
+            documentNumber = docNo,
+            documentNumberCheckDigit = docNoCd,
+            nationality = "CHN",
+            dateOfBirth = dob,
+            dateOfBirthCheckDigit = dobCd,
+            sex = "",
+            dateOfExpiry = doe,
+            dateOfExpiryCheckDigit = doeCd,
+            personalNumber = "",
+            personalNumberCheckDigit = '<',
+            compositeCheckDigit = compositeCd,
+            surname = surname,
+            givenNames = given,
+            optionalData1 = "",
+            optionalData2 = "",
+            allCheckDigitsValid = true,
+            repairedFields = emptyList(),
+            notes = notes
+        )
+    }
+
     // ------------------------------------------------------ 三要素直接构造
 
     /**

@@ -89,7 +89,7 @@ class ExportManager(
 
     private val csvHeader = listOf(
         "记录ID", "读取时间", "证件类型", "证件号码", "签发国/地区", "姓名(英文)", "姓名(本国文字)",
-        "姓", "名", "性别", "国籍", "出生日期", "有效期至", "MRZ格式", "个人编号",
+        "姓", "名", "性别", "国籍", "出生日期", "有效期至", "MRZ格式", "个人编号", "公民身份号码",
         "是否读取芯片", "芯片读取耗时(ms)", "芯片MRZ与OCR一致", "已读数据组", "可用数据组",
         "被动认证算法", "摘要全部匹配", "CMS签名有效", "签名证书主题", "签名证书签发者", "签名证书有效期至",
         "信任链已验证", "签发国根证书", "根证书序列号", "根证书有效期至", "信任库规模",
@@ -106,7 +106,7 @@ class ExportManager(
             val row = listOf(
                 r.id, r.createdAtText, r.certName, r.documentNumber, r.issuingState,
                 r.fullName, r.nativeName, r.surname, r.givenNames, r.gender, r.nationality,
-                r.dateOfBirth, r.dateOfExpiry, r.mrzFormat, r.personalNumber,
+                r.dateOfBirth, r.dateOfExpiry, r.mrzFormat, r.personalNumber, r.idNumber,
                 if (r.chipRead) "是" else "否", r.chipReadElapsedMs.toString(),
                 when (r.chipMrzMatchesOcr) { true -> "是"; false -> "否"; null -> "未比对" },
                 r.readDataGroups.joinToString("|") { "DG$it" },

@@ -42,8 +42,14 @@ object DgParsers {
      * 从 DG2 中提取面部图像。
      *
      * DG2 的封装层次是 `75 → 7F61 → 7F60 → ... → 生物特征数据块`，块内为
-     * 标准 JPEG（FFD8FF）或 JPEG2000（JP2 签名箱）。这里采用"签名扫描"的方式
-     * 定位图像数据，兼容不同厂商的封装差异。
+     * 标准 JPEG、JPEG2000（JP2 包装格式）或 JPEG2000 裸码流。这里采用"签名扫描"
+     * 的方式定位图像数据，兼容不同厂商的封装差异。
+     *
+     * 三种图像格式的签名：
+     *  - JPEG           `FF D8 FF`（SOI）
+     *  - JPEG2000 / JP2 `00 00 00 0C 6A 50 20 20 0D 0A 87 0A`（JP2 签名箱）
+     *  - JPEG2000 裸码流 `FF 4F FF 51`（SOC + SIZ）——不带 JP2 包装箱，
+     *    往来港澳/台湾通行证等证件使用这种形式，早期版本漏检导致头像无法显示
      */
     fun parseDg2(dg2: ByteArray): FaceImage? {
         val outerTag = Tlv.parse(dg2).firstOrNull()?.tagHex ?: "??"
@@ -56,11 +62,26 @@ object DgParsers {
             return FaceImage(dg2.copyOfRange(jpegStart, end), "JPEG", outerTag)
         }
 
-        // JPEG2000：签名箱 00 00 00 0C 6A 50 20 20 0D 0A 87 0A
+        // JPEG2000：JP2 文件格式（签名箱）
         val jp2Sig = Hex.decode("0000000C6A5020200D0A870A")
         val jp2Start = indexOf(dg2, jp2Sig)
         if (jp2Start >= 0) {
             return FaceImage(dg2.copyOfRange(jp2Start, dg2.size), "JPEG2000", outerTag)
+        }
+
+        // JPEG2000：裸码流（SOC `FF4F` + SIZ `FF51`）
+        val j2kStart = indexOf(
+            dg2,
+            byteArrayOf(0xFF.toByte(), 0x4F.toByte(), 0xFF.toByte(), 0x51.toByte())
+        )
+        if (j2kStart >= 0) {
+            return FaceImage(dg2.copyOfRange(j2kStart, dg2.size), "JPEG2000", outerTag)
+        }
+
+        // 兜底：认不出图像格式时也把整个数据组原样保留下来。
+        // 宁可存一份「打不开但完整」的数据，也不要静默丢弃证件照片。
+        if (dg2.size > 256) {
+            return FaceImage(dg2, "未知格式（原始数据组）", outerTag)
         }
 
         return null
@@ -72,9 +93,11 @@ object DgParsers {
     data class Dg11Item(val tag: Int, val label: String, val value: String)
 
     private val DG11_LABELS = mapOf(
-        0x5F0E to "姓名（母语/全名）",
-        0x5F0F to "出生地",
-        0x5F10 to "个人编号",
+        // 注意：中国签发的通行证对 5F0F / 5F10 的用法与 ICAO 9303-10 的默认含义不同，
+        // 实测往来港澳/台湾通行证中 5F0F 存的是英文姓名（MRZ 格式）、5F10 存的是公民身份号码。
+        0x5F0E to "姓名（母语）",
+        0x5F0F to "姓名（英文，MRZ 格式）/ 出生地",
+        0x5F10 to "公民身份号码 / 个人编号",
         0x5F11 to "姓名（本国文字）",
         0x5F12 to "预留",
         0x5F13 to "完整出生日期",
@@ -109,6 +132,41 @@ object DgParsers {
     fun extractNativeName(items: List<Dg11Item>): String? =
         items.firstOrNull { it.tag == 0x5F0E }?.value?.takeIf { it.isNotBlank() }
             ?: items.firstOrNull { it.tag == 0x5F11 }?.value?.takeIf { it.isNotBlank() }
+
+    /**
+     * DG11 中的**英文姓名**（MRZ 格式，如 `ZHENGJIAN<<YANGBEN`）。
+     *
+     * 中国签发的往来港澳/台湾通行证把英文姓名放在 0x5F0F
+     * （ICAO 9303-10 中该 tag 的默认含义是"出生地"）。
+     * 这里用「是否含 `<<` 分隔符」来区分：MRZ 姓名一定含 `<<`，出生地不会。
+     */
+    fun extractEnglishName(items: List<Dg11Item>): String? =
+        items.firstOrNull { it.tag == 0x5F0F }?.value
+            ?.replace('\u0000', ' ')
+            ?.trim()
+            ?.takeIf { it.contains("<<") }
+
+    /** DG11 中的**公民身份号码**（18 位，中国证件）。 */
+    fun extractIdNumber(items: List<Dg11Item>): String? =
+        items.firstOrNull { it.tag == 0x5F10 }?.value
+            ?.replace("\u0000", "")
+            ?.replace("\u0001", "")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+
+    /**
+     * 从 18 位公民身份号码推断性别。
+     *
+     * 中国公民身份号码第 17 位为顺序码，奇数为男、偶数为女。
+     * 往来港澳/台湾通行证的 MRZ 中没有独立的性别字段，DG11 提供了身份号码，
+     * 因此用它来补全性别。
+     */
+    fun genderFromIdNumber(idNumber: String?): String? {
+        val id = idNumber?.trim().orEmpty()
+        if (id.length != 18 || !id.all { it.isDigit() }) return null
+        val seq = id[16] - '0'
+        return if (seq % 2 == 1) "男 / M" else "女 / F"
+    }
 
     private fun decodeText(bytes: ByteArray): String {
         // 先按 UTF-8 解，失败则退回 Latin-1

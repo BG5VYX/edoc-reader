@@ -132,6 +132,7 @@ class DetailActivity : AppCompatActivity() {
                 "出生日期" to record.dateOfBirth,
                 "有效期至" to record.dateOfExpiry,
                 "个人编号" to record.personalNumber,
+                "公民身份号码" to record.idNumber,
                 "MRZ 格式" to record.mrzFormat
             )
         )

@@ -83,8 +83,15 @@ data class MrzInfo(
     val documentTypeLabel: String
         get() = when {
             format == MrzFormat.MANUAL -> "手动输入（未识别证件类型）"
+            // 中国签发的通行证类型码。芯片内与卡面印刷的写法不同：
+            //   芯片 DG1：`CS` = 往来港澳通行证，`CD` = 往来台湾通行证
+            //   卡面 MRZ：`S<` / `D<` 同理，`C<` 为通行证通用码
+            // 这些码都以 C（或 D）开头，**不能只按首字母判断**——
+            // 早期版本因此把往来台湾通行证误标成往来港澳通行证。
+            documentCode == "CD" || documentCode == "D<" -> "往来台湾通行证"
+            documentCode == "CS" || documentCode == "S<" || documentCode == "C<" -> "往来港澳通行证"
             documentCode.startsWith("P") -> "护照 / Passport"
-            documentCode.startsWith("C") -> "往来港澳通行证"
+            documentCode.startsWith("C") -> "通行证"
             documentCode.startsWith("I") -> "身份证件 / ID"
             documentCode.startsWith("V") -> "签证 / Visa"
             documentCode.startsWith("A") -> "外交/公务证件"

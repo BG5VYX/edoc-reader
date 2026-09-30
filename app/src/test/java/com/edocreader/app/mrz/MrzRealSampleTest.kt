@@ -398,4 +398,98 @@ class MrzRealSampleTest {
         assertEquals(original.mrzInformation, restored.mrzInformation)
         assertEquals("手动输入（未识别证件类型）", restored.documentTypeLabel)
     }
+
+    // -------------------------------------- 中国通行证专用布局（真实证件数据）
+
+    /** 往来港澳通行证 DG1 的 90 字符 MRZ（来自真实证件导出）。 */
+    private val hkPermitMrz =
+        "CSTE00000016<3001019<9001011<8" +
+            "LLMGMIKKONLFZHENGJIAN<<YANGBEN" +
+            "MAAC161135" + "<".repeat(20)
+
+    /** 往来台湾通行证 DG1 的 90 字符 MRZ（来自真实证件导出，同一持有人）。 */
+    private val twPermitMrz =
+        "CDTE00000027<3001019<9001011<6" +
+            "LLMGMIKKONLFZHENGJIAN<<YANGBEN" +
+            "MAAC16<<35" + "<".repeat(20)
+
+    @Test
+    fun `通行证样本的 MRZ 长度为 90`() {
+        assertEquals(90, hkPermitMrz.length)
+        assertEquals(90, twPermitMrz.length)
+    }
+
+    @Test
+    fun `往来港澳通行证的字段解析正确`() {
+        val info = MrzParser.parseChinesePermitMrz(hkPermitMrz)
+        assertNotNull("应能按通行证专用布局解析", info)
+        info!!
+
+        assertEquals("证件号", "TE0000001", info.documentNumber)
+        assertEquals(9, info.documentNumber.length)
+        assertEquals("出生日期", "900101", info.dateOfBirth)
+        assertEquals(6, info.dateOfBirth.length)
+        assertEquals("有效期", "300101", info.dateOfExpiry)
+        assertEquals(6, info.dateOfExpiry.length)
+        assertEquals("CS", info.documentCode)
+        assertEquals("CHN", info.issuingState)
+        assertEquals("CHN", info.nationality)
+        assertEquals("ZHENGJIAN", info.surname)
+        assertEquals("YANGBEN", info.givenNames)
+        assertTrue("校验位应全部通过", info.allCheckDigitsValid)
+    }
+
+    @Test
+    fun `往来台湾通行证的字段解析正确`() {
+        val info = MrzParser.parseChinesePermitMrz(twPermitMrz)
+        assertNotNull(info)
+        info!!
+
+        assertEquals("证件号", "TE0000002", info.documentNumber)
+        assertEquals(9, info.documentNumber.length)
+        assertEquals("出生日期", "900101", info.dateOfBirth)
+        assertEquals("有效期", "300101", info.dateOfExpiry)
+        assertEquals("CD", info.documentCode)
+        assertEquals("ZHENGJIAN", info.surname)
+        assertEquals("YANGBEN", info.givenNames)
+        assertTrue("校验位应全部通过", info.allCheckDigitsValid)
+    }
+
+    @Test
+    fun `两类通行证的证件类型标签不同`() {
+        val hk = MrzParser.parseChinesePermitMrz(hkPermitMrz)!!
+        val tw = MrzParser.parseChinesePermitMrz(twPermitMrz)!!
+
+        assertEquals("往来港澳通行证", hk.documentTypeLabel)
+        assertEquals("往来台湾通行证", tw.documentTypeLabel)
+        // 回归：二者都以 C 开头，早期版本把台湾证误标成港澳证
+        assertFalse(
+            "往来台湾通行证不能被标成往来港澳通行证",
+            tw.documentTypeLabel.contains("港澳")
+        )
+    }
+
+    @Test
+    fun `通行证 MRZi 与三要素一致`() {
+        // BAC 口令应等于 证件号+校验位 ‖ 出生日期+校验位 ‖ 有效期+校验位
+        val info = MrzParser.parseChinesePermitMrz(hkPermitMrz)!!
+        val fromFields = MrzParser.fromThreeElements("TE0000001", "900101", "300101")!!
+        assertEquals(fromFields.mrzInformation, info.mrzInformation)
+        assertEquals(24, info.mrzInformation.length)
+    }
+
+    @Test
+    fun `标准 TD1 不会被误判为通行证专用布局`() {
+        // 普通 TD1 的三个分隔位不在 13/21/29，且校验位对不上，必须返回 null
+        assertNull(MrzParser.parseChinesePermitMrz(permitLine1 + permitLine2 + permitLine3))
+        assertNull("长度不符", MrzParser.parseChinesePermitMrz(permitLine1))
+        assertNull("空串", MrzParser.parseChinesePermitMrz(""))
+    }
+
+    @Test
+    fun `校验位被破坏时专用布局应拒绝`() {
+        // 改动有效期的一位，复合校验位随即失效
+        val broken = hkPermitMrz.substring(0, 14) + "9" + hkPermitMrz.substring(15)
+        assertNull("校验位不符时不应采用该布局", MrzParser.parseChinesePermitMrz(broken))
+    }
 }

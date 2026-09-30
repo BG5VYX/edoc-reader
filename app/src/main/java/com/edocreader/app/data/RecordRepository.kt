@@ -53,10 +53,7 @@ class RecordRepository(context: Context) {
             if (faceImage != null && faceImage.isNotEmpty()) {
                 val fileName = "face_${record.id}.jpg"
                 File(facesDir, fileName).writeBytes(faceImage)
-                stored = record.copy(
-                    faceImageFileName = fileName,
-                    faceImageBytes = faceImage.size
-                )
+                stored = record.withFaceImage(fileName, faceImage.size)
             }
 
             all.removeAll { it.id == stored.id }

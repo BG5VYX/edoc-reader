@@ -103,6 +103,73 @@ data class DocRecord(
         val computedHash: String?
     )
 
+
+    /**
+     * 附加人脸图像信息，返回一份新的记录。
+     *
+     * 这里显式构造而不用 data class 自动生成的 copy()：
+     * DocRecord 有 50+ 个字段，copy() 会生成一个参数极多的
+     * copy$default 合成方法，一旦编译产物不同步就会出现
+     * NoSuchMethodError，且难以排查。
+     */
+    fun withFaceImage(fileName: String, byteCount: Int): DocRecord = DocRecord(
+        id = id,
+        createdAt = createdAt,
+        certName = certName,
+        documentCode = documentCode,
+        issuingState = issuingState,
+        documentNumber = documentNumber,
+        personalNumber = personalNumber,
+        idNumber = idNumber,
+        fullName = fullName,
+        nativeName = nativeName,
+        surname = surname,
+        givenNames = givenNames,
+        gender = gender,
+        nationality = nationality,
+        dateOfBirth = dateOfBirth,
+        dateOfExpiry = dateOfExpiry,
+        mrzFormat = mrzFormat,
+        chipRead = chipRead,
+        chipReadElapsedMs = chipReadElapsedMs,
+        chipMrzMatchesOcr = chipMrzMatchesOcr,
+        readDataGroups = readDataGroups,
+        availableDgTags = availableDgTags,
+        dg14Infos = dg14Infos,
+        dg15Info = dg15Info,
+        dg11Items = dg11Items,
+        passiveAuthHashAlgorithm = passiveAuthHashAlgorithm,
+        passiveAuthAllDgMatch = passiveAuthAllDgMatch,
+        passiveAuthCmsSignatureValid = passiveAuthCmsSignatureValid,
+        passiveAuthSignerSubject = passiveAuthSignerSubject,
+        passiveAuthSignerIssuer = passiveAuthSignerIssuer,
+        passiveAuthSignerValidTo = passiveAuthSignerValidTo,
+        passiveAuthNotes = passiveAuthNotes,
+        passiveAuthDgDetails = passiveAuthDgDetails,
+        cscaTrusted = cscaTrusted,
+        cscaSubject = cscaSubject,
+        cscaSerial = cscaSerial,
+        cscaNotAfter = cscaNotAfter,
+        cscaCurrentlyExpired = cscaCurrentlyExpired,
+        cscaChainDetail = cscaChainDetail,
+        cscaStoreSize = cscaStoreSize,
+        activeAuthPerformed = activeAuthPerformed,
+        activeAuthVerified = activeAuthVerified,
+        activeAuthAlgorithm = activeAuthAlgorithm,
+        activeAuthKeyDetail = activeAuthKeyDetail,
+        activeAuthChallenge = activeAuthChallenge,
+        activeAuthSignatureLength = activeAuthSignatureLength,
+        activeAuthDetail = activeAuthDetail,
+        ocrMrzLines = ocrMrzLines,
+        chipMrzLines = chipMrzLines,
+        ocrRepairs = ocrRepairs,
+        ocrNotes = ocrNotes,
+        faceImageFileName = fileName,
+        faceImageFormat = faceImageFormat,
+        faceImageBytes = byteCount,
+        steps = steps,
+    )
+
     /** 展示用时间。 */
     val createdAtText: String
         get() = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(createdAt))

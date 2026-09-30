@@ -2,6 +2,7 @@ package com.edocreader.app.data
 
 import android.content.Context
 import android.util.Log
+import com.edocreader.app.App
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -80,6 +81,14 @@ class ExportManager(
             zip.putNextEntry(ZipEntry("README.txt"))
             zip.write(buildReadme(records.size).toByteArray(Charsets.UTF_8))
             zip.closeEntry()
+
+            // 5) 崩溃日志（若存在）——便于用户在没有调试器时反馈现场
+            val crash = (context.applicationContext as? App)?.crashLogFile()
+            if (crash != null && crash.exists() && crash.length() > 0) {
+                zip.putNextEntry(ZipEntry("crash.log"))
+                zip.write(crash.readBytes())
+                zip.closeEntry()
+            }
         }
         Log.i(TAG, "exportBundle: ${records.size} 条 → ${file.absolutePath}")
         ExportFile(file, "application/zip", "ZIP 打包（JSON + CSV + 人脸图像，共 ${records.size} 条）")

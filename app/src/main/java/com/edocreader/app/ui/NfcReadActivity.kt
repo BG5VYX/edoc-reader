@@ -179,20 +179,35 @@ class NfcReadActivity : AppCompatActivity() {
 
     private fun saveAndOpen(result: PassportReader.Result) {
         lifecycleScope.launch {
-            val mrzInfo = result.chipMrz ?: result.ocrMrz
-            val record = DocRecord.fromReadResult(
-                result = result,
-                certName = mrzInfo.documentTypeLabel,
-                faceImageFileName = ""
-            )
-            val saved = App.instance.repository.save(record, result.faceImage)
-            Toast.makeText(this@NfcReadActivity, "已保存到本地", Toast.LENGTH_SHORT).show()
-            startActivity(
-                Intent(this@NfcReadActivity, DetailActivity::class.java)
-                    .putExtra(DetailActivity.EXTRA_ID, saved.id)
-            )
-            setResult(Activity.RESULT_OK)
-            finish()
+            // 保存/跳转失败不能把整个应用带崩——这里兜住异常并如实显示原因
+            val outcome = runCatching {
+                val mrzInfo = result.chipMrz ?: result.ocrMrz
+                val record = DocRecord.fromReadResult(
+                    result = result,
+                    certName = mrzInfo.documentTypeLabel,
+                    faceImageFileName = ""
+                )
+                App.instance.repository.save(record, result.faceImage)
+            }
+
+            outcome.onSuccess { saved ->
+                Toast.makeText(this@NfcReadActivity, "已保存到本地", Toast.LENGTH_SHORT).show()
+                startActivity(
+                    Intent(this@NfcReadActivity, DetailActivity::class.java)
+                        .putExtra(DetailActivity.EXTRA_ID, saved.id)
+                )
+                setResult(Activity.RESULT_OK)
+                finish()
+            }.onFailure { e ->
+                Log.e(TAG, "保存记录失败", e)
+                setState(R.string.nfc_success, R.drawable.ic_check_circle, showProgress = false)
+                appendLog("芯片已读通，但保存记录时出错：")
+                appendLog("${e.javaClass.simpleName}: ${e.message}")
+                appendLog("请把上面这段错误信息反馈给开发者")
+                binding.btnRetry.visibility = android.view.View.VISIBLE
+                handled.set(false)
+                reading.set(false)
+            }
         }
     }
 

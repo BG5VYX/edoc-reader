@@ -492,4 +492,54 @@ class MrzRealSampleTest {
         val broken = hkPermitMrz.substring(0, 14) + "9" + hkPermitMrz.substring(15)
         assertNull("校验位不符时不应采用该布局", MrzParser.parseChinesePermitMrz(broken))
     }
+
+    @Test
+    fun `只识别到第 1 行也能解析出三要素`() {
+        // OCR 常常只认出机读区的第一行；而 BAC 需要的三要素都在第一行里，
+        // 不应因为缺少后两行就卡住不进下一步。
+        val line1 = hkPermitMrz.substring(0, 30)
+        val info = MrzParser.parseChinesePermitMrz(line1)
+        assertNotNull("单行也应能解析", info)
+        info!!
+
+        assertEquals("TE0000001", info.documentNumber)
+        assertEquals("900101", info.dateOfBirth)
+        assertEquals("300101", info.dateOfExpiry)
+        assertTrue(info.allCheckDigitsValid)
+        // 姓名留空，后续由 DG11 补全
+        assertEquals("", info.surname)
+        assertEquals(1, info.rawLines.size)
+    }
+
+    @Test
+    fun `单行经过 parseFromLines 也能解析`() {
+        // 模拟 OCR 分析器的调用路径：只传一行 30 字符
+        val line1 = hkPermitMrz.substring(0, 30)
+        val info = MrzParser.parseFromLines(listOf(line1))
+        assertNotNull("OCR 只识别到一行时也应进入下一步", info)
+        assertEquals("TE0000001", info!!.documentNumber)
+        assertEquals("往来港澳通行证", info.documentTypeLabel)
+    }
+
+    @Test
+    fun `三行经过 parseFromLines 走专用布局`() {
+        // 模拟 OCR 识别到完整三行
+        val lines = listOf(
+            hkPermitMrz.substring(0, 30),
+            hkPermitMrz.substring(30, 60),
+            hkPermitMrz.substring(60, 90)
+        )
+        val info = MrzParser.parseFromLines(lines)
+        assertNotNull(info)
+        assertEquals("TE0000001", info!!.documentNumber)
+        assertEquals("ZHENGJIAN", info.surname)
+        assertEquals("YANGBEN", info.givenNames)
+    }
+
+    @Test
+    fun `单行长度不足或超长时不应误判`() {
+        assertNull(MrzParser.parseChinesePermitMrz(hkPermitMrz.substring(0, 29)))
+        assertNull(MrzParser.parseChinesePermitMrz(hkPermitMrz.substring(0, 60)))
+        assertNull(MrzParser.parseChinesePermitMrz(""))
+    }
 }

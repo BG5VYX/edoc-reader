@@ -499,7 +499,25 @@ object MrzParser {
         candidateLines: List<String>,
         requireValidChecksum: Boolean = false
     ): MrzInfo? {
+        val sanitized = candidateLines.map { sanitizeLine(it) }.filter { it.isNotBlank() }
+
+        // 中国通行证的第 1 行单独就有用：证件号、出生日期、有效期（即 BAC 三要素）都在其中。
+        // OCR 只认出一行时也能继续，不必等三行都识别到。
+        if (sanitized.size == 1 && sanitized[0].length == 30) {
+            parseChinesePermitMrz(sanitized[0])?.let {
+                if (!requireValidChecksum || it.allCheckDigitsValid) return it
+            }
+        }
+
         val lines = extractMrzLines(candidateLines) ?: return null
+
+        // 三行 30 字符：中国通行证的完整 DG1 布局
+        if (lines.size == 3 && lines.all { it.length == 30 }) {
+            parseChinesePermitMrz(lines.joinToString(""))?.let {
+                if (!requireValidChecksum || it.allCheckDigitsValid) return it
+            }
+        }
+
         val info = parse(lines) ?: return null
         if (requireValidChecksum && !info.allCheckDigitsValid) return null
         return info
@@ -526,11 +544,15 @@ object MrzParser {
      *
      * **只有当所有校验位都通过时才认定为此布局**，否则返回 null 交回标准 TD1 解析，
      * 避免把普通 TD1 证件误判。
+     *
+     * @param raw 90 字符（三行完整 MRZ）或 30 字符（仅第 1 行）。
+     *   **只给第 1 行也能用**——证件号、出生日期、有效期都在第 1 行，
+     *   这正是 BAC 所需的全部信息；姓名留空，由 DG11 补全。
      */
-    fun parseChinesePermitMrz(clean: String): MrzInfo? {
-        if (clean.length != 90) return null
+    fun parseChinesePermitMrz(raw: String): MrzInfo? {
+        val clean = raw.replace("\r", "").replace("\n", "")
+        if (clean.length != 30 && clean.length != 90) return null
         val l1 = clean.substring(0, 30)
-        val l2 = clean.substring(30, 60)
 
         // 三个分隔位必须是填充符
         if (l1[12] != '<' || l1[20] != '<' || l1[28] != '<') return null
@@ -550,8 +572,9 @@ object MrzParser {
         val expectedComposite = checkDigit(docNo + docNoCd + doe + doeCd + dob + dobCd)
         if (expectedComposite != compositeCd) return null
 
-        // 第 2 行偏移 12 之后是英文姓名
-        val nameField = l2.substring(12).trimEnd('<')
+        // 第 2 行偏移 12 之后是英文姓名；只有给全 90 字符时才有第 2 行
+        val l2 = if (clean.length == 90) clean.substring(30, 60) else ""
+        val nameField = if (l2.length > 12) l2.substring(12).trimEnd('<') else ""
         val (surname, given) = splitNames(nameField)
 
         val notes = mutableListOf<String>()
@@ -559,7 +582,11 @@ object MrzParser {
 
         return MrzInfo(
             format = MrzFormat.TD1,
-            rawLines = listOf(l1, l2, clean.substring(60, 90)),
+            rawLines = if (clean.length == 90) {
+                listOf(l1, l2, clean.substring(60, 90))
+            } else {
+                listOf(l1)
+            },
             documentCode = l1.substring(0, 2),
             issuingState = "CHN",
             documentNumber = docNo,

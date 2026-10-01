@@ -1,6 +1,7 @@
 package com.edocreader.app.ui
 
 import android.graphics.BitmapFactory
+import com.edocreader.app.jp2.FaceImageDecoder
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -110,23 +111,35 @@ class DetailActivity : AppCompatActivity() {
 
         val faceFile = App.instance.repository.faceImageFile(record)
         if (faceFile != null && faceFile.exists()) {
-            val bmp = BitmapFactory.decodeFile(faceFile.absolutePath)
-            if (bmp != null) {
-                binding.ivFace.setImageBitmap(bmp)
-            } else {
-                // 图像已保存但本机解不了码——最常见的原因是 JPEG 2000，
-                // Android 平台不内置该解码器。这里如实说明，不要静默留白。
-                binding.ivFace.setImageResource(R.drawable.ic_error)
-                binding.tvFaceHint.text = buildString {
-                    append("照片已保存（${record.faceImageBytes} 字节），")
-                    append("但本机无法显示。\n")
-                    append("格式：${record.faceImageFormat.ifBlank { "未知" }}")
-                    if (record.faceImageFormat.contains("JPEG2000", ignoreCase = true)) {
-                        append("\nAndroid 系统不内置 JPEG 2000 解码器。")
-                        append("照片文件已完整保存在应用数据目录，可在导出包中取用。")
+            // 解码放在后台：JPEG 2000 需要自己解，几十 KB 的照片在手机上约需数百毫秒，
+            // 放在主线程会卡顿。
+            lifecycleScope.launch {
+                val outcome = withContext(Dispatchers.IO) {
+                    val bytes = runCatching { faceFile.readBytes() }.getOrNull()
+                    if (bytes == null) {
+                        FaceImageDecoder.Outcome.Failed("读取照片文件失败")
+                    } else {
+                        FaceImageDecoder.decode(bytes, record.faceImageFormat)
                     }
                 }
-                binding.tvFaceHint.visibility = android.view.View.VISIBLE
+                when (outcome) {
+                    is FaceImageDecoder.Outcome.Success -> {
+                        binding.ivFace.setImageBitmap(outcome.bitmap)
+                    }
+                    is FaceImageDecoder.Outcome.Unsupported -> {
+                        binding.ivFace.setImageResource(R.drawable.ic_error)
+                        binding.tvFaceHint.text = buildString {
+                            append("照片已保存（${record.faceImageBytes} 字节），但无法显示。\n")
+                            append(outcome.reason)
+                        }
+                        binding.tvFaceHint.visibility = android.view.View.VISIBLE
+                    }
+                    is FaceImageDecoder.Outcome.Failed -> {
+                        binding.ivFace.setImageResource(R.drawable.ic_error)
+                        binding.tvFaceHint.text = outcome.reason
+                        binding.tvFaceHint.visibility = android.view.View.VISIBLE
+                    }
+                }
             }
         }
 

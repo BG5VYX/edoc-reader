@@ -23,3 +23,10 @@
 
 # ---- 保留枚举 ----
 -keepclassmembers enum * { *; }
+
+# ---- JPEG 2000 解码器（内嵌的 jj2000）----
+# 证件照片可能是 JPEG 2000（Android 系统不内置该解码器），这里内嵌了 jj2000。
+# 它依赖完整的类层次（反射与子类实例化较多），整体保留，不做裁剪与改名。
+-keep class ucar.jpeg.** { *; }
+-dontwarn ucar.jpeg.**
+-keep class com.edocreader.app.jp2.** { *; }

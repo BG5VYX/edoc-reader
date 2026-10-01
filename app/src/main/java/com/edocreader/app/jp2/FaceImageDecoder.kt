@@ -36,19 +36,19 @@ object FaceImageDecoder {
     fun decode(data: ByteArray, format: String): Outcome {
         if (data.isEmpty()) return Outcome.Failed("图像数据为空")
 
-        // ---- 先按格式名走 ----
-        when {
-            format.contains("JPEG2000", ignoreCase = true) -> return decodeJpeg2000(data)
-            format.startsWith("JPEG") -> {
+        // ---- 先按**文件签名**判断 ----
+        // 签名永远比格式名可靠：格式名可能来自芯片、也可能是我们自己写的说明文字，
+        // 只按字符串匹配会走错解码器（v1.0.14 的 "JPEG（由 JPEG2000 转码）" 就是这样翻车的）。
+        when (ImageSignature.sniff(data)) {
+            ImageSignature.JPEG2000 -> return decodeJpeg2000(data)
+            ImageSignature.JPEG -> {
                 decodeByBitmapFactory(data)?.let { return Outcome.Success(it) }
+                return Outcome.Unsupported("JPEG 数据无法解码（可能已损坏）")
             }
         }
 
-        // ---- 格式名不可靠时按签名兜底 ----
-        if (startsWith(data, 0xFF, 0x4F, 0xFF, 0x51)) return decodeJpeg2000(data)
-        if (startsWith(data, 0xFF, 0xD8, 0xFF)) {
-            decodeByBitmapFactory(data)?.let { return Outcome.Success(it) }
-        }
+        // ---- 签名不认识时再参考格式名 ----
+        if (format.contains("JPEG2000", ignoreCase = true)) return decodeJpeg2000(data)
 
         decodeByBitmapFactory(data)?.let { return Outcome.Success(it) }
 
@@ -82,8 +82,8 @@ object FaceImageDecoder {
     fun toStandardJpeg(data: ByteArray, format: String, quality: Int = 90): ByteArray? {
         if (data.isEmpty()) return null
 
-        // 本来就是 JPEG，直接用
-        if (startsWith(data, 0xFF, 0xD8, 0xFF)) return data
+        // 本来就是 JPEG，直接用（不重新编码，避免画质损失）
+        if (ImageSignature.sniff(data) == ImageSignature.JPEG) return data
 
         val bitmap = when (val outcome = decode(data, format)) {
             is Outcome.Success -> outcome.bitmap
@@ -111,11 +111,4 @@ object FaceImageDecoder {
         null
     }
 
-    private fun startsWith(data: ByteArray, vararg prefix: Int): Boolean {
-        if (data.size < prefix.size) return false
-        for (i in prefix.indices) {
-            if ((data[i].toInt() and 0xFF) != prefix[i]) return false
-        }
-        return true
-    }
 }

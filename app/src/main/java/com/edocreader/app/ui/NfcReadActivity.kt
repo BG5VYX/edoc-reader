@@ -191,11 +191,10 @@ class NfcReadActivity : AppCompatActivity() {
                         it, result.faceImageFormat.orEmpty()
                     )
                 }
-                val storedFormat = when {
-                    jpeg == null -> result.faceImageFormat.orEmpty()
-                    jpeg === rawFace -> result.faceImageFormat.orEmpty()
-                    else -> "JPEG（由 ${result.faceImageFormat.orEmpty()} 转码）"
-                }
+                // 落盘格式只写「JPEG」。不要写成「JPEG（由 JPEG2000 转码）」——
+                // 那样字符串里又出现了 JPEG2000，会让按格式名分发的解码逻辑走错分支。
+                val converted = jpeg != null && jpeg !== rawFace
+                val storedFormat = if (converted) "JPEG" else result.faceImageFormat.orEmpty()
 
                 val record = DocRecord.fromReadResult(
                     result = result,

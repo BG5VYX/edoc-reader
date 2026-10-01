@@ -161,7 +161,7 @@ class DetailActivity : AppCompatActivity() {
                 "出生日期" to record.dateOfBirth,
                 "有效期至" to record.dateOfExpiry,
                 "个人编号" to record.personalNumber,
-                "公民身份号码" to record.idNumber,
+                "公民身份号码" to describeIdNumber(record),
                 "MRZ 格式" to record.mrzFormat
             )
         )
@@ -304,6 +304,31 @@ class DetailActivity : AppCompatActivity() {
         // ---- 过程日志 ----
         if (record.steps.isNotEmpty()) {
             addSection("读取过程", listOf("步骤" to record.steps.joinToString("\n")))
+        }
+    }
+
+    /**
+     * 描述 DG11 里的公民身份号码。
+     *
+     * 实测往来台湾通行证在该字段存明文；往来港澳通行证存的是芯片内的固定变换结果
+     * （32 个字母，只用到 A-P，即 16 字节）——两次读取结果一致，说明不是会话密钥
+     * 加密，而是芯片侧的固定变换，没有密钥无法还原。
+     * 这时如实说明，不要把密文当成身份号码展示。
+     */
+    private fun describeIdNumber(record: DocRecord): String {
+        if (record.idNumber.isNotBlank()) return record.idNumber
+
+        val raw = record.dg11Items
+            .firstOrNull { it.tag.equals("0x5F10", ignoreCase = true) }
+            ?.value
+            ?.replace("\u0000", "")
+            ?.trim()
+            .orEmpty()
+
+        return when {
+            raw.isBlank() -> "芯片未提供"
+            raw.length == 18 && raw.all { it.isDigit() } -> raw
+            else -> "芯片中为加密形式，本应用无法解读（原始值 $raw）"
         }
     }
 

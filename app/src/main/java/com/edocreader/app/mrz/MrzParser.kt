@@ -41,6 +41,9 @@ object MrzParser {
      */
     private const val MRZ_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<"
 
+    /** 中国通行证 MRZ 每行 30 字符（TD1 尺寸）。 */
+    private const val PERMIT_LINE_LENGTH = 30
+
     // ------------------------------------------------------------ 行组整理
 
     /**
@@ -501,26 +504,39 @@ object MrzParser {
     ): MrzInfo? {
         val sanitized = candidateLines.map { sanitizeLine(it) }.filter { it.isNotBlank() }
 
-        // 中国通行证的第 1 行单独就有用：证件号、出生日期、有效期（即 BAC 三要素）都在其中。
-        // OCR 只认出一行时也能继续，不必等三行都识别到。
-        if (sanitized.size == 1 && sanitized[0].length == 30) {
-            parseChinesePermitMrz(sanitized[0])?.let {
-                if (!requireValidChecksum || it.allCheckDigitsValid) return it
+        // ---- 中国通行证 ----
+        // 顺序很重要：先试**三行齐全**的完整布局（能同时拿到姓名），
+        // 再退回到逐行扫描。反过来会先命中只有第 1 行的结果，姓名就丢了。
+        val thirty = sanitized.filter { it.length == PERMIT_LINE_LENGTH }
+        if (thirty.size >= 3) {
+            parseChinesePermitMrz(thirty.take(3).joinToString(""))?.let { return it }
+        }
+
+        // 第 1 行单独就含 BAC 三要素（证件号、有效期、出生日期），
+        // 所以**逐行**尝试即可，不要求 OCR 恰好只给出一行——
+        // 实际拍摄时常常还混着别的噪声行。
+        // 对长度不规整的行再用滑动窗口兜一层，容错 OCR 多识别/漏识别一两个字符。
+        for (line in sanitized) {
+            for (candidate in windowsOf(line, PERMIT_LINE_LENGTH)) {
+                parseChinesePermitMrz(candidate)?.let { return it }
             }
         }
 
         val lines = extractMrzLines(candidateLines) ?: return null
-
-        // 三行 30 字符：中国通行证的完整 DG1 布局
-        if (lines.size == 3 && lines.all { it.length == 30 }) {
-            parseChinesePermitMrz(lines.joinToString(""))?.let {
-                if (!requireValidChecksum || it.allCheckDigitsValid) return it
-            }
+        if (lines.size == 3 && lines.all { it.length == PERMIT_LINE_LENGTH }) {
+            parseChinesePermitMrz(lines.joinToString(""))?.let { return it }
         }
 
         val info = parse(lines) ?: return null
         if (requireValidChecksum && !info.allCheckDigitsValid) return null
         return info
+    }
+
+    /** 在一行里取出所有长度为 [len] 的连续窗口；行本身正好等长时只返回它自己。 */
+    private fun windowsOf(line: String, len: Int): List<String> {
+        if (line.length == len) return listOf(line)
+        if (line.length < len) return emptyList()
+        return (0..(line.length - len)).map { line.substring(it, it + len) }
     }
 
     // ------------------------------------------------------ 中国通行证专用布局

@@ -182,12 +182,28 @@ class NfcReadActivity : AppCompatActivity() {
             // 保存/跳转失败不能把整个应用带崩——这里兜住异常并如实显示原因
             val outcome = runCatching {
                 val mrzInfo = result.chipMrz ?: result.ocrMrz
+
+                // 芯片里的照片可能是 JPEG 2000，Android 与多数看图软件都打不开。
+                // 落盘前统一转成通用 JPEG，这样详情页能显示、导出的照片也能直接打开。
+                val rawFace = result.faceImage
+                val jpeg = rawFace?.let {
+                    com.edocreader.app.jp2.FaceImageDecoder.toStandardJpeg(
+                        it, result.faceImageFormat.orEmpty()
+                    )
+                }
+                val storedFormat = when {
+                    jpeg == null -> result.faceImageFormat.orEmpty()
+                    jpeg === rawFace -> result.faceImageFormat.orEmpty()
+                    else -> "JPEG（由 ${result.faceImageFormat.orEmpty()} 转码）"
+                }
+
                 val record = DocRecord.fromReadResult(
                     result = result,
                     certName = mrzInfo.documentTypeLabel,
-                    faceImageFileName = ""
+                    faceImageFileName = "",
+                    storedImageFormat = storedFormat
                 )
-                App.instance.repository.save(record, result.faceImage)
+                App.instance.repository.save(record, jpeg)
             }
 
             outcome.onSuccess { saved ->

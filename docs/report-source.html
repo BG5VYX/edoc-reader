@@ -1600,5 +1600,165 @@ BAC 与安全报文已通过 ICAO 官方向量逐字节验证，92 项单元测�
 请务必在合法合规、取得明确授权的前提下使用相关技术。
 </div>
 
+
+<div style="page-break-before:always;"></div>
+<h1 style="font-size:19pt; margin:28px 0 14px;">附录 B　EdocReader 实测补充（v1.0.9 – v1.0.14）</h1>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+以下结论全部来自<b>真实证件</b>的芯片读取数据，可与正文章节互相印证。
+</p>
+
+<h2 style="font-size:14pt; margin:22px 0 10px;">B.1　中国通行证的 DG1 不是标准 TD1 布局</h2>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+实测<b>往来港澳通行证</b>与<b>往来台湾通行证</b>的芯片 DG1 与标准 TD1 不同。
+两本证件的<b>全部校验位（含复合校验位）都能对上</b>，这是确认布局正确性的关键证据：
+</p>
+
+<pre style="font-size:8.6pt; background:#f6f8fa; border:1px solid #ddd; padding:12px; line-height:1.6;">
+第 1 行：证件类型码(1-2) 证件号码(3-11) 校验位(12) 填充(13)
+         有效期(14-19) 校验位(20) 填充(21)
+         出生日期(22-27) 校验位(28) 填充(29) 复合校验位(30)
+第 2 行：12 字符附加信息 + 英文姓名（MRZ 格式）
+第 3 行：10 字符附加信息 + 填充
+</pre>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+与标准 TD1 的两处关键差异：
+</p>
+<ol style="font-size:10pt; line-height:1.85; color:#222;">
+<li><b>有效期排在出生日期之前</b>（标准 TD1 相反）</li>
+<li>复合校验位覆盖 <code>证件号+校验位 ‖ 有效期+校验位 ‖ 出生日期+校验位</code></li>
+</ol>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>证件类型码</b>（二者都以 C 开头，<b>不能只按首字母判断</b>）：
+</p>
+<table style="border-collapse:collapse; font-size:9.4pt; margin:8px 0 16px;">
+<tr style="background:#eef2f7;"><th style="border:1px solid #ccc; padding:6px 14px;">芯片</th><th style="border:1px solid #ccc; padding:6px 14px;">卡面</th><th style="border:1px solid #ccc; padding:6px 14px;">证件</th></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>CS</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>S&lt;</code></td><td style="border:1px solid #ccc; padding:6px 14px;">往来港澳通行证</td></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>CD</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>D&lt;</code></td><td style="border:1px solid #ccc; padding:6px 14px;">往来台湾通行证</td></tr>
+</table>
+
+<h2 style="font-size:14pt; margin:22px 0 10px;">B.2　DG11 补充字段（实测标签含义与 ICAO 默认不同）</h2>
+
+<table style="border-collapse:collapse; font-size:9.4pt; margin:8px 0 16px;">
+<tr style="background:#eef2f7;"><th style="border:1px solid #ccc; padding:6px 14px;">DG11 tag</th><th style="border:1px solid #ccc; padding:6px 14px;">ICAO 9303-10 默认含义</th><th style="border:1px solid #ccc; padding:6px 14px;">中国通行证实际用途</th></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>0x5F0E</code></td><td style="border:1px solid #ccc; padding:6px 14px;">姓名（母语）</td><td style="border:1px solid #ccc; padding:6px 14px;">中文姓名（一致）</td></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>0x5F0F</code></td><td style="border:1px solid #ccc; padding:6px 14px;">出生地</td><td style="border:1px solid #ccc; padding:6px 14px;"><b>英文姓名</b>（MRZ 格式）</td></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>0x5F10</code></td><td style="border:1px solid #ccc; padding:6px 14px;">个人编号</td><td style="border:1px solid #ccc; padding:6px 14px;"><b>公民身份号码</b></td></tr>
+</table>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+性别由公民身份号码第 17 位推断（奇数男、偶数女）；签发国与国籍固定为 <code>CHN</code>。
+</p>
+
+<h2 style="font-size:14pt; margin:22px 0 10px;">B.3　往来港澳通行证的身份号码为密文（未解）</h2>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+实测同一持有人在两本证件上 <code>0x5F10</code> 的取值：
+</p>
+
+<table style="border-collapse:collapse; font-size:9.4pt; margin:8px 0 16px;">
+<tr style="background:#eef2f7;"><th style="border:1px solid #ccc; padding:6px 14px;">证件</th><th style="border:1px solid #ccc; padding:6px 14px;">该字段内容</th></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px;">往来台湾通行证</td><td style="border:1px solid #ccc; padding:6px 14px;"><code>110101199001011234</code>　明文，正常</td></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px;">往来港澳通行证</td><td style="border:1px solid #ccc; padding:6px 14px;"><code>HKLMDEGCEBFOMGKGIIMGKAHHIPOFLMBO</code>　32 个字母</td></tr>
+</table>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+分析过程：
+</p>
+<ul style="font-size:10pt; line-height:1.85; color:#222;">
+<li>字母只用到 <b>A–P 十六个</b>，即每个字母携带 4 位 → 共 <b>16 字节</b></li>
+<li>同一证件读取两次，结果<b>完全相同</b> → 不是会话密钥加密，而是芯片侧的<b>固定变换</b></li>
+<li>对身份号码原文、BCD 形式、证件号、MRZ 第 1 行等分别试过
+    MD5 / SHA-1 / SHA-256，<b>均不匹配</b></li>
+</ul>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>结论</b>：这 16 字节很可能是芯片内以固定密钥加密的身份号码，<b>没有密钥无法还原</b>。
+EdocReader 的处理方式是：只采用真正的 18 位身份号码，否则如实标注
+「芯片中为加密形式，本应用无法解读」，<b>不把密文当作身份号码展示</b>。
+</p>
+
+<h2 style="font-size:14pt; margin:22px 0 10px;">B.4　DG2 面部图像为 JPEG 2000，Android 需自带解码器</h2>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+实测中国签发的往来港澳/台湾通行证，DG2 中的面部图像是
+<b>JPEG 2000 裸码流</b>（以 <code>FF4F FF51</code> 即 SOC + SIZ 开头），
+而非 JPEG。实测参数：
+</p>
+
+<pre style="font-size:8.6pt; background:#f6f8fa; border:1px solid #ddd; padding:12px; line-height:1.6;">
+尺寸      354 × 472
+分量数    3（8 位无符号）
+小波      5 级 5/3 可逆（整数）
+层数      1
+进度      LRCP
+码块      64 × 64
+颜色变换  MCT = 1（启用）
+</pre>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>Android 平台不内置 JPEG 2000 解码器</b>，<code>BitmapFactory</code> 与
+<code>ImageDecoder</code> 对它均返回 null。EdocReader 的解决方式是内嵌纯 Java 的
+<b>jj2000</b> 解码核心（166 个文件，约 4.6 万行，许可证允许用于符合 JPEG 2000 标准的实现），
+并自写适配层把输入改为内存数组、直接取回像素数组。
+</p>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>验证方式</b>：以 Pillow（OpenJPEG）的解码结果为基准逐像素比对 ——
+6745 个采样点<b>平均差 0.000、最大差 0</b>，完全一致。
+</p>
+
+<h2 style="font-size:14pt; margin:22px 0 10px;">B.5　官方 SDK 的 Lua 脚本（.nlc）逆向进展</h2>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<code>bin/pscp.lar</code> 实为 <b>ZIP</b>，内含编译过的 Lua 脚本：
+<code>mrz.nlc</code> / <code>dg11.nlc</code> / <code>dg13.nlc</code> / <code>funcs.nlc</code> / <code>start.nlc</code>。
+</p>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>已确认是 Lua 5.3 字节码</b>：
+</p>
+<ul style="font-size:10pt; line-height:1.85; color:#222;">
+<li>魔数 <code>1B 4C 75 61 53</code> = <code>Lua</code> + 版本 <code>0x53</code></li>
+<li>常量表标签 <code>04</code>（短字符串）与 <code>13</code>（整数）与 Lua 5.3 定义完全吻合
+    （<code>LUA_TSHRSTR = 4</code>、<code>LUA_TNUMINT = 0x13</code>）</li>
+</ul>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>厂商改动</b>（这是反编译失败的原因）：
+</p>
+<table style="border-collapse:collapse; font-size:9.4pt; margin:8px 0 16px;">
+<tr style="background:#eef2f7;"><th style="border:1px solid #ccc; padding:6px 14px;">位置</th><th style="border:1px solid #ccc; padding:6px 14px;">标准值</th><th style="border:1px solid #ccc; padding:6px 14px;">本 SDK</th></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px;">byte 5 <code>format</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>00</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>3F</code></td></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px;">byte 6–11 <code>LUAC_DATA</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>19 93 0D 0A 1A 0A</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>4E 4C 0D 0A 43 0A</code>（<code>NL
+C
+</code>）</td></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px;">byte 17–24 <code>LUAC_INT</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>0x5678</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>0x8457</code></td></tr>
+<tr><td style="border:1px solid #ccc; padding:6px 14px;">byte 25–32 <code>LUAC_NUM</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;"><code>370.5</code></td><td style="border:1px solid #ccc; padding:6px 14px; text-align:center;">非标准值</td></tr>
+</table>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+把上述四处补成标准值后，反编译器<b>能通过头部校验</b>，但随后
+<code>lastlinedefined</code> 读成 <code>16777216</code> 并导致内存溢出 ——
+说明 proto 头部的字段宽度或顺序也被改动，<b>必须修改反编译器源码</b>才能继续。
+</p>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>可复用的成果</b>：字节码常量表格式已破解 ——
+字符串为 <code>04 &lt;len&gt; &lt;bytes&gt;</code>，数字为 <code>13</code> + 8 字节小端整数。
+从中提取出的字段偏移 <code>31 / 38 / 39 / 46 / 6 / 30 / 90 / 88 / 72</code>
+正好是<b>标准 TD1</b> 的位置，说明 SDK 的 <code>parseTD1</code> 采用标准布局，
+中国通行证走的是 <code>parseTravelCard</code> / <code>parseBackMainlandCard</code> 分支。
+</p>
+
+<p style="font-size:10pt; line-height:1.85; color:#222;">
+<b>替代路线</b>：与其继续反编译，不如直接导出芯片原始数据组字节
+（EdocReader v1.0.12 起随导出包提供 <code>rawDg1Hex</code> / <code>rawDg11Hex</code> /
+<code>rawDg2HeadHex</code>），即可在本地精确复现，无需反编译。
+</p>
+
 </body>
 </html>

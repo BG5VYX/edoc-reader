@@ -111,7 +111,23 @@ class DetailActivity : AppCompatActivity() {
         val faceFile = App.instance.repository.faceImageFile(record)
         if (faceFile != null && faceFile.exists()) {
             val bmp = BitmapFactory.decodeFile(faceFile.absolutePath)
-            if (bmp != null) binding.ivFace.setImageBitmap(bmp)
+            if (bmp != null) {
+                binding.ivFace.setImageBitmap(bmp)
+            } else {
+                // 图像已保存但本机解不了码——最常见的原因是 JPEG 2000，
+                // Android 平台不内置该解码器。这里如实说明，不要静默留白。
+                binding.ivFace.setImageResource(R.drawable.ic_error)
+                binding.tvFaceHint.text = buildString {
+                    append("照片已保存（${record.faceImageBytes} 字节），")
+                    append("但本机无法显示。\n")
+                    append("格式：${record.faceImageFormat.ifBlank { "未知" }}")
+                    if (record.faceImageFormat.contains("JPEG2000", ignoreCase = true)) {
+                        append("\nAndroid 系统不内置 JPEG 2000 解码器。")
+                        append("照片文件已完整保存在应用数据目录，可在导出包中取用。")
+                    }
+                }
+                binding.tvFaceHint.visibility = android.view.View.VISIBLE
+            }
         }
 
         binding.sectionContainer.removeAllViews()

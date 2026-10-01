@@ -15,7 +15,8 @@ import org.junit.Test
  *   · 出生日期 6 位（YYMMDD）
  *   · 有效期   6 位（YYMMDD）
  *
- * 样本来源：中华人民共和国电子普通护照、往来港澳通行证的证件样本。
+ * 样本说明：以下均为**合成样本**（证件号、姓名、日期皆为虚构），
+ * 但字段位数与校验位规则与真实证件完全一致，因此仍能验证解析逻辑。
  */
 class MrzRealSampleTest {
 
@@ -401,13 +402,13 @@ class MrzRealSampleTest {
 
     // -------------------------------------- 中国通行证专用布局（真实证件数据）
 
-    /** 往来港澳通行证 DG1 的 90 字符 MRZ（来自真实证件导出）。 */
+    /** 往来港澳通行证 DG1 的 90 字符 MRZ（合成样本，结构对齐真实证件）。 */
     private val hkPermitMrz =
         "CSTE00000016<3001019<9001011<8" +
             "LLMGMIKKONLFZHENGJIAN<<YANGBEN" +
             "MAAC161135" + "<".repeat(20)
 
-    /** 往来台湾通行证 DG1 的 90 字符 MRZ（来自真实证件导出，同一持有人）。 */
+    /** 往来台湾通行证 DG1 的 90 字符 MRZ（合成样本，结构对齐真实证件，同一持有人）。 */
     private val twPermitMrz =
         "CDTE00000027<3001019<9001011<6" +
             "LLMGMIKKONLFZHENGJIAN<<YANGBEN" +

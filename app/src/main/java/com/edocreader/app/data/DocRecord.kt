@@ -49,6 +49,11 @@ data class DocRecord(
     val dg15Info: String = "",
     val dg11Items: List<Dg11Item> = emptyList(),
 
+    /** 原始数据组字节（十六进制），用于离线诊断。DG2 只保留开头 64 字节。 */
+    val rawDg1Hex: String = "",
+    val rawDg11Hex: String = "",
+    val rawDg2HeadHex: String = "",
+
     // ---- 被动认证 ----
     val passiveAuthHashAlgorithm: String = "",
     val passiveAuthAllDgMatch: Boolean? = null,
@@ -104,13 +109,15 @@ data class DocRecord(
     )
 
 
+
     /**
      * 附加人脸图像信息，返回一份新的记录。
      *
      * 这里显式构造而不用 data class 自动生成的 copy()：
-     * DocRecord 有 50+ 个字段，copy() 会生成一个参数极多的
-     * copy$default 合成方法，一旦编译产物不同步就会出现
-     * NoSuchMethodError，且难以排查。
+     * DocRecord 字段很多，copy() 会生成一个参数极多的 copy$default
+     * 合成方法，一旦编译产物不同步就会出现 NoSuchMethodError，且极难排查。
+     *
+     * 注意：DocRecord 增删字段后，本方法必须同步更新（可用 tools 下的脚本重生成）。
      */
     fun withFaceImage(fileName: String, byteCount: Int): DocRecord = DocRecord(
         id = id,
@@ -138,6 +145,9 @@ data class DocRecord(
         dg14Infos = dg14Infos,
         dg15Info = dg15Info,
         dg11Items = dg11Items,
+        rawDg1Hex = rawDg1Hex,
+        rawDg11Hex = rawDg11Hex,
+        rawDg2HeadHex = rawDg2HeadHex,
         passiveAuthHashAlgorithm = passiveAuthHashAlgorithm,
         passiveAuthAllDgMatch = passiveAuthAllDgMatch,
         passiveAuthCmsSignatureValid = passiveAuthCmsSignatureValid,
@@ -236,6 +246,10 @@ data class DocRecord(
                 dg11Items = result.dg11Items.map {
                     Dg11Item(String.format("0x%02X", it.tag), it.label, it.value)
                 },
+
+                rawDg1Hex = result.rawDg1Hex,
+                rawDg11Hex = result.rawDg11Hex,
+                rawDg2HeadHex = result.rawDg2HeadHex,
 
                 passiveAuthHashAlgorithm = pa?.hashAlgorithm.orEmpty(),
                 passiveAuthAllDgMatch = pa?.allDgHashesMatch,

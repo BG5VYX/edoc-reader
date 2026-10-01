@@ -35,6 +35,17 @@ class PassportReader(
         val faceImageFormat: String?,
         val dg11Items: List<DgParsers.Dg11Item>,
         val nativeName: String?,
+
+        /**
+         * 原始数据组字节（十六进制），用于离线诊断。
+         *
+         * 遇到字段解析异常时，光看「解析结果」无法判断是布局理解错了还是数据本身如此，
+         * 保留原始字节就能在本地精确复现。
+         * DG2 体积大（数十 KB），只保留开头 64 字节用于识别图像格式。
+         */
+        val rawDg1Hex: String,
+        val rawDg11Hex: String,
+        val rawDg2HeadHex: String,
         val availableDgTags: List<String>,
         val dg14Infos: List<String>,
         val dg15Info: String?,
@@ -146,6 +157,9 @@ class PassportReader(
                 faceImageFormat = face?.format,
                 dg11Items = dg11Items,
                 nativeName = DgParsers.extractNativeName(dg11Items),
+                rawDg1Hex = dg1?.let { Hex.encode(it) }.orEmpty(),
+                rawDg11Hex = dg11?.let { Hex.encode(it) }.orEmpty(),
+                rawDg2HeadHex = dg2?.let { Hex.encode(it.copyOfRange(0, minOf(64, it.size))) }.orEmpty(),
                 availableDgTags = dgTags,
                 dg14Infos = dg14?.let { DgParsers.describeDg14(it) } ?: emptyList(),
                 dg15Info = dg15?.let { DgParsers.describeDg15(it) },

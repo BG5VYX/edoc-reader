@@ -194,18 +194,28 @@ data class DocRecord(
     companion object {
 
         /** 由读取结果构造记录。 */
-        fun fromReadResult(
-            result: PassportReader.Result,
-            certName: String,
-            faceImageFileName: String
-        ): DocRecord {
+    fun fromReadResult(
+        result: PassportReader.Result,
+        certName: String,
+        faceImageFileName: String,
+        /**
+         * 实际落盘的图像格式。为空时沿用芯片里的原始格式名。
+         *
+         * 芯片里可能是 JPEG 2000，而落盘时已转成通用 JPEG——
+         * 这时要如实记录落盘格式，否则界面上写的和文件内容对不上。
+         */
+        storedImageFormat: String? = null
+    ): DocRecord {
             val mrz = result.chipMrz ?: result.ocrMrz
             val pa = result.passiveAuth
 
             // 中国签发的通行证把英文姓名与公民身份号码放在 DG11 中，
             // 且 MRZ 里没有独立性别字段——这里用 DG11 补全。
             val dg11Name = DgParsers.extractEnglishName(result.dg11Items)
+            // 只有确实是 18 位公民身份号码时才采用。往来港澳通行证在该字段存的是
+            // 芯片内的固定变换结果（32 个字母），不是明文，不能当成身份号码展示。
             val dg11Id = DgParsers.extractIdNumber(result.dg11Items)
+                ?.takeIf { DgParsers.isReadableIdNumber(it) }
             val (nameSurname, nameGiven) = if (dg11Name != null) {
                 MrzParser.splitNames(dg11Name)
             } else {
@@ -284,7 +294,7 @@ data class DocRecord(
                 ocrNotes = result.ocrMrz.notes,
 
                 faceImageFileName = faceImageFileName,
-                faceImageFormat = result.faceImageFormat.orEmpty(),
+                faceImageFormat = storedImageFormat ?: result.faceImageFormat.orEmpty(),
                 faceImageBytes = result.faceImage?.size ?: 0,
 
                 steps = result.steps

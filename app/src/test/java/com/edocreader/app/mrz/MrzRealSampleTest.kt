@@ -542,4 +542,32 @@ class MrzRealSampleTest {
         assertNull(MrzParser.parseChinesePermitMrz(hkPermitMrz.substring(0, 60)))
         assertNull(MrzParser.parseChinesePermitMrz(""))
     }
+
+    @Test
+    fun `OCR 给出多行且夹杂噪声时仍能识别通行证`() {
+        // 真实场景：拍摄机读区时 OCR 常常还给出别的内容。
+        // 早期实现要求「恰好一行 30 字符」才走专用布局，于是识别到完整机读码
+        // 也进不了下一步，用户只能手工输入三要素。
+        val line1 = hkPermitMrz.substring(0, 30)
+        val noisy = listOf(
+            "中华人民共和国往来港澳通行证",
+            line1,
+            "姓名 黄泉淼"
+        )
+        val info = MrzParser.parseFromLines(noisy)
+        assertNotNull("夹带噪声行时也应识别成功", info)
+        assertEquals("CH9189902", info!!.documentNumber)
+        assertEquals("090110", info.dateOfBirth)
+        assertEquals("350814", info.dateOfExpiry)
+        assertTrue("校验位应全部通过", info.allCheckDigitsValid)
+    }
+
+    @Test
+    fun `OCR 行首多出字符时用滑动窗口仍能识别`() {
+        // OCR 偶尔会在行首粘上噪点，导致行长不是 30
+        val line1 = hkPermitMrz.substring(0, 30)
+        val info = MrzParser.parseFromLines(listOf("8" + line1))
+        assertNotNull("行首多一个字符时也应识别成功", info)
+        assertEquals("CH9189902", info!!.documentNumber)
+    }
 }

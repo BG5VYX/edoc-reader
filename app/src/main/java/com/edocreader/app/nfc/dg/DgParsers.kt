@@ -155,6 +155,24 @@ object DgParsers {
             ?.takeIf { it.isNotBlank() }
 
     /**
+     * 判断 DG11 `0x5F10` 的值是否是一个**可读的**公民身份号码。
+     *
+     * 实测：往来台湾通行证在该字段存明文（`350524200901107417`）；
+     * 而往来港澳通行证存的是 32 个字母（只用到 A-P，即每字节 4 位，
+     * 共 16 字节）——两次读取结果完全一致，说明是芯片内的固定变换而非
+     * 会话密钥加密，没有密钥无法还原。此时应如实告知，而不是把它当成
+     * 身份号码展示（会被误认成证件信息）。
+     */
+    fun isReadableIdNumber(idNumber: String?): Boolean {
+        val id = idNumber?.trim().orEmpty()
+        if (id.length != 18) return false
+        // 前 17 位必须是数字，末位为数字或 X
+        if (!id.take(17).all { it.isDigit() }) return false
+        if (!(id[17].isDigit() || id[17] == 'X' || id[17] == 'x')) return false
+        return true
+    }
+
+    /**
      * 从 18 位公民身份号码推断性别。
      *
      * 中国公民身份号码第 17 位为顺序码，奇数为男、偶数为女。

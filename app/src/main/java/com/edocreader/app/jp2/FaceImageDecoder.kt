@@ -69,6 +69,40 @@ object FaceImageDecoder {
         Outcome.Unsupported("JPEG 2000 解码失败：${e.javaClass.simpleName}: ${e.message}")
     }
 
+    /**
+     * 把证件照片转成**通用的 JPEG 字节**，好让任何看图软件都能打开。
+     *
+     * DG2 里的图像可能是 JPEG 2000，直接把它命名为 `.jpg` 存盘虽然扩展名对，
+     * 但内容不是 JPEG，导出后用看图软件打不开。这里统一转码：
+     * - 本来就是 JPEG 的，原样返回（不重新编码，避免画质损失）
+     * - JPEG 2000 的先解码再编码为 JPEG
+     *
+     * @return 可被看图软件打开的 JPEG 字节；无法转换时返回 null
+     */
+    fun toStandardJpeg(data: ByteArray, format: String, quality: Int = 90): ByteArray? {
+        if (data.isEmpty()) return null
+
+        // 本来就是 JPEG，直接用
+        if (startsWith(data, 0xFF, 0xD8, 0xFF)) return data
+
+        val bitmap = when (val outcome = decode(data, format)) {
+            is Outcome.Success -> outcome.bitmap
+            else -> {
+                Log.w(TAG, "无法转为 JPEG：$outcome")
+                return null
+            }
+        }
+        return try {
+            java.io.ByteArrayOutputStream().use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+                out.toByteArray()
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "JPEG 编码失败", e)
+            null
+        }
+    }
+
     /** 交给系统解码器（JPEG / PNG 等）。 */
     private fun decodeByBitmapFactory(data: ByteArray): Bitmap? = try {
         android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size)
